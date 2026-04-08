@@ -31,7 +31,26 @@ const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
 app.get('/health', (_request, response) => {
-  response.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  const missingVars = [];
+  if (env.isProduction) {
+    if (env.databaseUrl === 'MISSING_DATABASE_URL') missingVars.push('DATABASE_URL');
+    if (env.jwtSecret === 'MISSING_JWT_SECRET') missingVars.push('JWT_SECRET');
+  }
+  
+  if (missingVars.length > 0) {
+    response.status(503).json({ 
+      status: 'unhealthy',
+      message: 'Missing environment variables',
+      missing: missingVars,
+      timestamp: new Date().toISOString() 
+    });
+  } else {
+    response.status(200).json({ 
+      status: 'ok',
+      environment: env.nodeEnv,
+      timestamp: new Date().toISOString() 
+    });
+  }
 });
 
 app.use('/api', apiRouter);
