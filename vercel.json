@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
   "builds": [
     {
       "src": "api/index.ts",
@@ -8,8 +9,17 @@
   ],
   "routes": [
     {
+      "src": "/health",
+      "dest": "/api/index.ts",
+      "methods": ["GET"]
+    },
+    {
       "src": "/(.*)",
       "dest": "/api/index.ts"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3000"
+  }
 }
