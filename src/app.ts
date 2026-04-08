@@ -19,13 +19,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
-// Request timeout for serverless environment (30s Vercel limit)
-app.use((req, res, next) => {
-  req.setTimeout(25000); // 25s to allow Vercel buffer
-  res.setTimeout(25000);
-  next();
-});
-
 // Logging - use 'combined' for production
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
