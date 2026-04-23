@@ -23,35 +23,43 @@ app.use(express.json({ limit: '1mb' }));
 
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
-const specs = swaggerJsdoc({
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Nirmaya Medical Records API',
-      version: '1.0.0',
-      description: 'Medical records management system API',
-    },
-    servers: [
-      {
-        url: env.baseUrl || 'http://localhost:3000',
-        description: 'API Server',
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+
+// Lazy-load Swagger specs on first request to avoid cold start timeout
+let swaggerSpecs: any = null;
+const getSwaggerSpecs = () => {
+  if (!swaggerSpecs) {
+    swaggerSpecs = swaggerJsdoc({
+      definition: {
+        openapi: '3.0.0',
+        info: {
+          title: 'Nirmaya Medical Records API',
+          version: '1.0.0',
+          description: 'Medical records management system API',
+        },
+        servers: [
+          {
+            url: env.baseUrl || 'http://localhost:3000',
+            description: 'API Server',
+          },
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+            },
+          },
         },
       },
-    },
-  },
-  apis: [
-    './dist/src/routes/**/*.js',
-    './dist/src/controllers/**/*.js',
-  ],
-});
+      apis: [
+        './dist/src/routes/**/*.js',
+        './dist/src/controllers/**/*.js',
+      ],
+    });
+  }
+  return swaggerSpecs;
+};
 
 /**
  * @swagger
@@ -79,7 +87,7 @@ const specs = swaggerJsdoc({
  *       503:
  *         description: API unhealthy (missing env vars)
  */
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+app.use('/api-docs', swaggerUi.serve, (req: any, res: any, next: any) => swaggerUi.setup(getSwaggerSpecs())(req, res, next));
 
 app.get('/health', (_request, response) => {
   const missingVars = [];
