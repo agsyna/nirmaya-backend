@@ -3,25 +3,26 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 import { env } from './config/env';
 
-// Serverless-optimized connection pool
-// Uses PgBouncer or similar for connection pooling in production
+// Create connection pool with minimal initialization
+// Don't validate connection on creation to avoid hanging on Vercel cold starts
 const pool = new Pool({
   connectionString: env.databaseUrl,
-  max: env.isProduction ? 5 : 20, // Further reduced for serverless cold starts
-  idleTimeoutMillis: 10000, // Reduced idle timeout
-  connectionTimeoutMillis: 2000, // Reduced connection timeout
+  max: env.isProduction ? 5 : 20,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 3000,
+  statement_timeout: 10000,
+  application_name: 'nirmaya_backend',
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('[DB] Pool error:', err.message);
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  pool.end(() => {
-    console.log('Database pool closed');
-    process.exit(0);
+// Graceful shutdown for local development only
+if (!env.isProduction && typeof process !== 'undefined') {
+  process.on('SIGINT', () => {
+    pool.end().catch(err => console.error('[DB] Error closing pool:', err));
   });
-});
+}
 
 export const db = drizzle(pool, { schema });
