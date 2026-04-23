@@ -5,12 +5,14 @@ import morgan from 'morgan';
 import { apiRouter } from './routes';
 import { errorHandler, notFound } from './middlewares/errorHandler';
 import { env } from './config/env';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+
 
 export const app = express();
 
 app.use(helmet());
 
-// CORS configuration - restrict in production
 const allowedOrigins = env.corsOrigin.split(',').filter(Boolean);
 app.use(cors({
   origin: allowedOrigins.length > 0 ? allowedOrigins : 'http://localhost:3000',
@@ -19,9 +21,65 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
-// Logging - use 'combined' for production
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
+const specs = swaggerJsdoc({
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Nirmaya Medical Records API',
+      version: '1.0.0',
+      description: 'Medical records management system API',
+    },
+    servers: [
+      {
+        url: env.baseUrl || 'http://localhost:3000',
+        description: 'API Server',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+  },
+  apis: [
+    './dist/src/routes/**/*.js',
+    './dist/src/controllers/**/*.js',
+  ],
+});
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 environment:
+ *                   type: string
+ *                   example: production
+ *                 timestamp:
+ *                   type: string
+ *       503:
+ *         description: API unhealthy (missing env vars)
+ */
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 app.get('/health', (_request, response) => {
   const missingVars = [];

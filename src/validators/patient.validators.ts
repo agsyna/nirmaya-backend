@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Health data validator
 export const healthDataSchema = z.object({
   bloodPressure: z.string().regex(/^\d+\/\d+$/, 'Invalid blood pressure format (e.g., 120/80)').optional(),
   bloodGlucose: z.number().positive().optional(),
