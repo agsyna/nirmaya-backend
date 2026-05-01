@@ -24,6 +24,29 @@ app.use(express.json({ limit: '1mb' }));
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
+// Check for critical missing environment variables before processing requests
+app.use((req, res, next) => {
+  if (env.isProduction) {
+    const missingVars = [];
+    if (env.databaseUrl === 'MISSING_DATABASE_URL') {
+      missingVars.push('DATABASE_URL');
+    }
+    if (env.jwtSecret === 'MISSING_JWT_SECRET') {
+      missingVars.push('JWT_SECRET');
+    }
+
+    if (missingVars.length > 0) {
+      console.error('[ENV] Missing critical vars:', missingVars);
+      return res.status(503).json({
+        error: 'Service misconfigured',
+        message: 'Required environment variables are not set',
+        missing: missingVars
+      });
+    }
+  }
+  next();
+});
+
 // Lazy-load Swagger specs on first request to avoid cold start timeout
 let swaggerSpecs: any = null;
 const getSwaggerSpecs = () => {
