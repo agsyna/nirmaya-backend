@@ -11,6 +11,28 @@ import swaggerJsdoc from 'swagger-jsdoc';
 
 export const app = express();
 
+// Request tracking middleware - logs all requests for debugging
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  const requestId = Math.random().toString(36).substring(7);
+  
+  console.log(`[${requestId}] ${req.method} ${req.path} - START`);
+  
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    console.log(`[${requestId}] ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+  });
+
+  res.on('close', () => {
+    if (!res.headersSent) {
+      const duration = Date.now() - startTime;
+      console.warn(`[${requestId}] ${req.method} ${req.path} - CLOSED (${duration}ms)`);
+    }
+  });
+
+  next();
+});
+
 app.use(helmet());
 
 const allowedOrigins = env.corsOrigin.split(',').filter(Boolean);
