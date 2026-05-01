@@ -6,7 +6,7 @@
       "src": "api/index.ts",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 20,
+        "maxDuration": 19,
         "memory": 1024
       }
     }
@@ -23,7 +23,6 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production",
-    "PORT": "3000"
+    "NODE_ENV": "production"
   }
 }
