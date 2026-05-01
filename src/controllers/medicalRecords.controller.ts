@@ -19,6 +19,8 @@ import { createMedicalRecordSchema, updateMedicalRecordSchema } from '../validat
  */
 export const getReportsController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
+  const limit = Math.min(Number(request.query.limit) || 10, 100);
+  const offset = Number(request.query.offset) || 0;
 
   if (!userId) {
     throw new AppError(401, 'Unauthorized');
@@ -63,11 +65,12 @@ export const getReportsController = asyncHandler(async (request: Request, respon
   }
 
   // Fetch all reports for the patient
-  const reports = await getMedicalRecordsByPatientAndType(patient.patientId, 'report');
+  const reports = await getMedicalRecordsByPatientAndType(patient.patientId, 'report', limit + offset);
+  const paginatedReports = reports.slice(offset, offset + limit);
 
   response.status(200).json({
     status: 'success',
-    data: reports.map((report) => ({
+    data: paginatedReports.map((report: any) => ({
       recordId: report.recordId,
       type: report.type,
       title: report.title,
@@ -77,7 +80,11 @@ export const getReportsController = asyncHandler(async (request: Request, respon
       createdAt: report.createdAt,
     })),
     meta: {
-      count: reports.length,
+      count: paginatedReports.length,
+      total: reports.length,
+      limit,
+      offset,
+      hasMore: offset + paginatedReports.length < reports.length,
     },
   });
 });
@@ -131,6 +138,8 @@ export const createReportController = asyncHandler(async (request: Request, resp
  */
 export const getPrescriptionsController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
+  const limit = Math.min(Number(request.query.limit) || 10, 100);
+  const offset = Number(request.query.offset) || 0;
 
   if (!userId) {
     throw new AppError(401, 'Unauthorized');
@@ -174,11 +183,12 @@ export const getPrescriptionsController = asyncHandler(async (request: Request, 
   }
 
   // Fetch all prescriptions for the patient
-  const prescriptions = await getMedicalRecordsByPatientAndType(patient.patientId, 'prescription');
+  const prescriptions = await getMedicalRecordsByPatientAndType(patient.patientId, 'prescription', limit + offset);
+  const paginatedPrescriptions = prescriptions.slice(offset, offset + limit);
 
   response.status(200).json({
     status: 'success',
-    data: prescriptions.map((prescription) => ({
+    data: paginatedPrescriptions.map((prescription: any) => ({
       recordId: prescription.recordId,
       type: prescription.type,
       title: prescription.title,
@@ -188,7 +198,11 @@ export const getPrescriptionsController = asyncHandler(async (request: Request, 
       createdAt: prescription.createdAt,
     })),
     meta: {
-      count: prescriptions.length,
+      count: paginatedPrescriptions.length,
+      total: prescriptions.length,
+      limit,
+      offset,
+      hasMore: offset + paginatedPrescriptions.length < prescriptions.length,
     },
   });
 });

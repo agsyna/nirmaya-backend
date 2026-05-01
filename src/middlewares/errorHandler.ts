@@ -28,6 +28,17 @@ export const errorHandler = (error: unknown, request: Request, response: Respons
     return;
   }
 
+  // Drizzle wraps SQL failures with "Failed query"; return a safe message to clients.
+  if (error instanceof Error && error.message.includes('Failed query:')) {
+    const isSchemaIssue = /column .* does not exist|relation .* does not exist|does not exist/i.test(error.message);
+    response.status(500).json({
+      message: isSchemaIssue
+        ? 'Database schema is out of sync. Run database migrations and try again.'
+        : 'Database query failed',
+    });
+    return;
+  }
+
   // Don't expose internal errors in production
   const message = env.isProduction ? 'Internal server error' : (error instanceof Error ? error.message : 'Internal server error');
   response.status(500).json({ message });

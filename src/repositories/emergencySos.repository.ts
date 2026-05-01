@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { emergencySos } from '../schema';
 import { AppError } from '../utils/appError';
@@ -51,7 +51,7 @@ export const createEmergencySos = async (sos: {
 
 export const updateEmergencySos = async (
   sosId: string,
-  _patientId: string,
+  patientId: string,
   updates: {
     ambulanceCalled?: boolean;
     ambulanceEta?: number;
@@ -64,7 +64,7 @@ export const updateEmergencySos = async (
   const [result] = await db
     .update(emergencySos)
     .set(updates)
-    .where(eq(emergencySos.sosId, sosId))
+    .where(and(eq(emergencySos.sosId, sosId), eq(emergencySos.patientId, patientId)))
     .returning();
 
   if (!result) {

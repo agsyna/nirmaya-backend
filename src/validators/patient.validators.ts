@@ -45,6 +45,22 @@ export const updateEmergencySosSchema = z.object({
   status: z.enum(['active', 'resolved', 'cancelled']).optional(),
 });
 
+export const createUploadUrlSchema = z.object({
+  fileName: z.string().min(1),
+  contentType: z.string().min(1),
+  folder: z.enum(['reports', 'prescriptions', 'scans', 'other']).default('other'),
+});
+
+export const finalizeUploadSchema = z.object({
+  path: z.string().min(1),
+  type: z.enum(['prescription', 'report', 'scan', 'vaccination', 'other']),
+  title: z.string().min(1).max(255),
+  originalContent: z.string().optional(),
+  documentDate: z.string().date().optional(),
+  privacy: z.enum(['private', 'shared']).default('private'),
+  metadata: z.record(z.any()).optional(),
+});
+
 // Audit log query validator
 export const auditLogQuerySchema = z.object({
   id: z.string().uuid().optional(),

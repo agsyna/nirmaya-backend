@@ -11,6 +11,7 @@ import { getPatientByUserId, getPatientHealthData, getPatientAllergies, getPatie
 import { getMedicalRecordsByPatientAndType } from '../repositories/medicalRecords.repository';
 import { generateQRCode } from '../lib/qrcode';
 import { env } from '../config/env';
+import type { HealthData, Allergy, ChronicCondition } from '../schema';
 import { z } from 'zod';
 
 const createShareTokenSchema = z.object({
@@ -87,6 +88,8 @@ export const createShareTokenController = asyncHandler(async (request: Request, 
  */
 export const getShareTokensController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
+  const limit = Math.min(Number(request.query.limit) || 10, 100);
+  const offset = Number(request.query.offset) || 0;
 
   if (!userId || request.auth?.role !== 'patient') {
     throw new AppError(401, 'Patient authentication required');
@@ -98,10 +101,11 @@ export const getShareTokensController = asyncHandler(async (request: Request, re
   }
 
   const tokens = await getShareTokensByPatient(patient.patientId);
+  const paginatedTokens = tokens.slice(offset, offset + limit);
 
   response.status(200).json({
     status: 'success',
-    data: tokens.map((token) => ({
+    data: paginatedTokens.map((token: any) => ({
       tokenId: token.tokenId,
       doctorId: token.doctorId,
       scope: token.scope,
@@ -115,7 +119,11 @@ export const getShareTokensController = asyncHandler(async (request: Request, re
       createdAt: token.createdAt,
     })),
     meta: {
-      count: tokens.length,
+      count: paginatedTokens.length,
+      total: tokens.length,
+      limit,
+      offset,
+      hasMore: offset + paginatedTokens.length < tokens.length,
     },
   });
 });
@@ -169,7 +177,7 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
   // Fetch health data if in scope
   if (scope.includes('health_data')) {
     const healthData = await getPatientHealthData(patientId, 100);
-    dataResponse.healthData = healthData.map((hd) => ({
+    dataResponse.healthData = healthData.map((hd: HealthData) => ({
       heartRate: hd.heartRate,
       bloodPressure: hd.bloodPressure,
       bloodGlucose: hd.bloodGlucose,
@@ -183,7 +191,7 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
   // Fetch allergies if in scope
   if (scope.includes('health_data')) {
     const allergies = await getPatientAllergies(patientId);
-    dataResponse.allergies = allergies.map((a) => ({
+    dataResponse.allergies = allergies.map((a: Allergy) => ({
       allergyName: a.allergyName,
       severity: a.severity,
       description: a.description,
@@ -193,7 +201,7 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
   // Fetch chronic conditions if in scope
   if (scope.includes('health_data')) {
     const chronicConditions = await getPatientChronicConditions(patientId);
-    dataResponse.chronicConditions = chronicConditions.map((cc) => ({
+    dataResponse.chronicConditions = chronicConditions.map((cc: ChronicCondition) => ({
       conditionName: cc.conditionName,
       status: cc.status,
       diagnosisDate: cc.diagnosisDate,

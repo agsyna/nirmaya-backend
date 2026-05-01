@@ -15,6 +15,8 @@ import { getPatientByUserId } from '../repositories/patient.repository';
  */
 export const getAuditLogsController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
+  const limit = Math.min(Number(request.query.limit) || 10, 100);
+  const offset = Number(request.query.offset) || 0;
   const auditId = (() => {
     const id = request.query.id;
     if (typeof id === 'string') return id;
@@ -54,12 +56,13 @@ export const getAuditLogsController = asyncHandler(async (request: Request, resp
     return;
   }
 
-  // Get all audit logs
-  const auditLogs = await getAuditLogsByPatient(patient.patientId, 100);
+  // Get all audit logs with pagination
+  const auditLogs = await getAuditLogsByPatient(patient.patientId, 1000);
+  const paginatedLogs = auditLogs.slice(offset, offset + limit);
 
   response.status(200).json({
     status: 'success',
-    data: auditLogs.map((log) => ({
+    data: paginatedLogs.map((log: any) => ({
       auditId: log.auditId,
       action: log.action, // view, download, print, share
       status: log.status, // success, failed
@@ -71,7 +74,11 @@ export const getAuditLogsController = asyncHandler(async (request: Request, resp
       metadata: log.metadata,
     })),
     meta: {
-      count: auditLogs.length,
+      count: paginatedLogs.length,
+      total: auditLogs.length,
+      limit,
+      offset,
+      hasMore: offset + paginatedLogs.length < auditLogs.length,
     },
   });
 });

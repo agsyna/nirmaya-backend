@@ -5,78 +5,110 @@ import { env } from './config/env';
 
 let pool: Pool | null = null;
 let dbInstance: any = null;
+let dbError: Error | null = null;
+let shutdownHandlerRegistered = false;
 
 /**
  * Lazy initialization - only creates the pool when a query is actually made
  * This prevents hanging on module import in Vercel serverless
  */
 function ensurePool() {
-  if (pool) return;
+  if (pool || dbError) return;
 
   // Skip if DATABASE_URL is invalid
   if (!env.databaseUrl || env.databaseUrl === 'MISSING_DATABASE_URL') {
-    console.warn('[DB] Skipping pool creation - DATABASE_URL not set');
+    dbError = new Error('[DB] DATABASE_URL not configured');
+    console.warn('[DB]', dbError.message);
     return;
   }
 
-  console.log('[DB] Creating pool on first use...');
+  console.log('[DB] Creating pool...');
 
-  pool = new Pool({
-    connectionString: env.databaseUrl,
-    max: env.isProduction ? 2 : 20,
-    min: 0,
-    idleTimeoutMillis: 5000,
-    connectionTimeoutMillis: 1500,
-    statement_timeout: 5000,
-    query_timeout: 5000,
-    application_name: 'nirmaya_backend',
-    keepAlive: true,
-  });
+  try {
+    const useSsl = env.dbSslEnabled;
 
-  pool.on('error', (err) => {
-    console.error('[DB] Pool error:', err.message);
-  });
-
-  dbInstance = drizzle(pool, { schema });
-
-  if (!env.isProduction) {
-    process.on('SIGINT', () => {
-      if (pool) {
-        pool.end().catch(e => console.error('[DB] Shutdown error:', e));
-      }
+    pool = new Pool({
+      connectionString: env.databaseUrl,
+      max: env.isProduction ? 2 : 5,
+      min: 0,
+      idleTimeoutMillis: 5000,
+      connectionTimeoutMillis: 3000,
+      statement_timeout: 8000,
+      query_timeout: 8000,
+      application_name: 'nirmaya_backend',
+      keepAlive: true,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
     });
+
+    pool.on('error', (err) => {
+      console.error('[DB] Pool error:', err.message);
+      dbError = err;
+    });
+
+    dbInstance = drizzle(pool, { schema });
+    console.log('[DB] Pool created');
+
+    // Register shutdown handler only once
+    if (!shutdownHandlerRegistered && !env.isProduction) {
+      shutdownHandlerRegistered = true;
+      process.on('SIGINT', async () => {
+        if (pool && !pool.ending) {
+          try {
+            await pool.end();
+            console.log('[DB] Pool closed gracefully');
+          } catch (e) {
+            // Ignore "pool already ended" errors
+            if (!(e instanceof Error && e.message.includes('more than once'))) {
+              console.error('[DB] Shutdown error:', e);
+            }
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[DB] Pool creation error:', error);
+    dbError = error instanceof Error ? error : new Error(String(error));
   }
 }
 
 /**
- * Get or create the drizzle db instance
+ * Check if database error exists
  */
-export function getDb() {
-  ensurePool();
-  return dbInstance;
+export function hasDbError() {
+  return !!dbError;
 }
 
 /**
- * Proxy that ensures pool exists before accessing db methods
+ * Proxy that safely handles database access
  */
 export const db = new Proxy({}, {
-  get(target, prop: string | symbol) {
-    ensurePool();
+  get(_target, prop: string | symbol) {
+    // If database failed to initialize, return safe no-ops
+    if (dbError && !dbInstance) {
+      console.warn('[DB] Database unavailable:', dbError.message);
+      if (prop === 'select' || prop === 'insert' || prop === 'update' || prop === 'delete') {
+        return () => {
+          throw new Error('[DB] Database connection not available');
+        };
+      }
+      return undefined;
+    }
+
+    // Try to ensure pool on first access
+    if (!pool && !dbError) {
+      ensurePool();
+    }
 
     if (!dbInstance) {
-      // Database not available, return a safe no-op
-      console.warn('[DB] Database instance not available');
       return undefined;
     }
 
     const value = (dbInstance as any)[prop];
 
-    // If it's a method, wrap it to ensure pool exists
     if (typeof value === 'function') {
       return function (...args: any[]) {
-        ensurePool();
         if (!dbInstance) {
-          throw new Error('[DB] Database connection not available');
+          throw new Error('[DB] Database connection lost');
         }
         return (value as any).apply(dbInstance, args);
       };

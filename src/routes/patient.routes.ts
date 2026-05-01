@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { authenticate } from '../middlewares/auth';
 import { validateBody } from '../middlewares/validate';
 
@@ -33,6 +34,11 @@ import {
   getEmergencySosHistoryController,
   getEmergencySosDetailController,
 } from '../controllers/emergency.controller';
+import {
+  createUploadUrlController,
+  finalizeUploadController,
+  uploadFileDirectController,
+} from '../controllers/upload.controller';
 
 // Access logs controllers
 import {
@@ -46,9 +52,12 @@ import {
   healthDataSchema,
   createMedicalRecordSchema,
   createEmergencySosSchema,
+  createUploadUrlSchema,
+  finalizeUploadSchema,
 } from '../validators/patient.validators';
 
 export const patientRouter = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 // All routes require authentication
 patientRouter.use(authenticate);
@@ -74,6 +83,7 @@ patientRouter.use(authenticate);
  *         description: Unauthorized
  */
 patientRouter.get('/me', getCurrentUserController);
+patientRouter.get('/health', getUserHealthController);
 
 /**
  * @swagger
@@ -495,152 +505,131 @@ patientRouter.get('/emergency', getEmergencySosHistoryController);
 patientRouter.get('/emergency/:sosId', getEmergencySosDetailController);
 patientRouter.put('/emergency/:sosId', updateEmergencySosController);
 
-// ============
-// USER ROUTES
-// ============
-
-/**
- * GET /api/user/me
- * Returns current user profile with patient data and QR code
- */
-patientRouter.get('/me', getCurrentUserController);
-
-/**
- * GET /api/user/health
- * Returns comprehensive health data including:
- * - Heart rate, blood pressure, blood glucose, temperature, weight
- * - All allergies with severity levels
- * - Chronic conditions with status
- */
-patientRouter.get('/health', getUserHealthController);
-
-/**
- * POST /api/user/health
- * Create a new health record
- */
-patientRouter.post('/health', validateBody(healthDataSchema), createUserHealthRecordController);
-
 // ==================
-// MEDICAL RECORDS - REPORTS
+// FILE UPLOADS (SUPABASE)
 // ==================
 
 /**
- * GET /api/history/reports
- * Get all reports for the patient
- * 
- * GET /api/history/reports?reportId={id}
- * Get specific report details
+ * @swagger
+ * /api/v1/patient/uploads/file:
+ *   post:
+ *     summary: Upload file directly to Supabase
+ *     description: Accepts multipart file upload and returns uploaded public URL.
+ *     tags:
+ *       - File Uploads
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               folder:
+ *                 type: string
+ *                 example: reports
+ *     responses:
+ *       201:
+ *         description: File uploaded successfully
+ *       400:
+ *         description: File missing
+ *       401:
+ *         description: Unauthorized
+ *       503:
+ *         description: Supabase storage not configured
  */
-patientRouter.get('/reports', getReportsController);
+patientRouter.post('/uploads/file', upload.single('file'), uploadFileDirectController);
 
 /**
- * POST /api/history/reports
- * Create a new medical report
+ * @swagger
+ * /api/v1/patient/uploads/sign:
+ *   post:
+ *     summary: Create signed upload URL
+ *     description: Creates a Supabase signed upload URL and storage path for direct file upload.
+ *     tags:
+ *       - File Uploads
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fileName
+ *               - contentType
+ *             properties:
+ *               fileName:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *               folder:
+ *                 type: string
+ *                 enum: [reports, prescriptions, scans, other]
+ *     responses:
+ *       201:
+ *         description: Signed URL generated successfully
+ *       401:
+ *         description: Unauthorized
+ *       503:
+ *         description: Supabase storage not configured
  */
-patientRouter.post('/reports', validateBody(createMedicalRecordSchema), createReportController);
+patientRouter.post('/uploads/sign', validateBody(createUploadUrlSchema), createUploadUrlController);
 
 /**
- * PUT /api/history/reports/:reportId
- * Update a specific report
+ * @swagger
+ * /api/v1/patient/uploads/finalize:
+ *   post:
+ *     summary: Finalize upload and create record
+ *     description: Finalizes uploaded file metadata and creates a medical record linked to Supabase file URL.
+ *     tags:
+ *       - File Uploads
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - path
+ *               - type
+ *               - title
+ *             properties:
+ *               path:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 enum: [prescription, report, scan, vaccination, other]
+ *               title:
+ *                 type: string
+ *               originalContent:
+ *                 type: string
+ *               documentDate:
+ *                 type: string
+ *                 format: date
+ *               privacy:
+ *                 type: string
+ *                 enum: [private, shared]
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       201:
+ *         description: Upload finalized and medical record created
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Invalid upload path
+ *       404:
+ *         description: Patient profile not found
  */
-patientRouter.put('/reports/:reportId', updateReportController);
+patientRouter.post('/uploads/finalize', validateBody(finalizeUploadSchema), finalizeUploadController);
 
-/**
- * DELETE /api/history/reports/:reportId
- * Delete a specific report
- */
-patientRouter.delete('/reports/:reportId', deleteReportController);
-
-// ==================
-// MEDICAL RECORDS - PRESCRIPTIONS
-// ==================
-
-/**
- * GET /api/history/prescriptions
- * Get all prescriptions for the patient
- * 
- * GET /api/history/prescriptions?prescriptionId={id}
- * Get specific prescription details
- */
-patientRouter.get('/prescriptions', getPrescriptionsController);
-
-/**
- * POST /api/history/prescriptions
- * Create a new prescription
- */
-patientRouter.post('/prescriptions', validateBody(createMedicalRecordSchema), createPrescriptionController);
-
-/**
- * PUT /api/history/prescriptions/:prescriptionId
- * Update a specific prescription
- */
-patientRouter.put('/prescriptions/:prescriptionId', updatePrescriptionController);
-
-/**
- * DELETE /api/history/prescriptions/:prescriptionId
- * Delete a specific prescription
- */
-patientRouter.delete('/prescriptions/:prescriptionId', deletePrescriptionController);
-
-// ==================
-// AUDIT LOGS
-// ==================
-
-/**
- * GET /api/audit-logs
- * Get all audit logs for the patient's data access
- * 
- * Query: ?id={auditId} - Get specific audit log entry
- */
-patientRouter.get('/audit-logs', getAuditLogsController);
-
-// ==================
-// ACCESS LOGS
-// ==================
-
-/**
- * GET /api/access-logs
- * Get all access logs for the patient's data
- * 
- * GET /api/access-logs?id={accessLogId}
- * Get specific access log record
- */
-patientRouter.get('/access-logs', getAccessLogsController);
-
-/**
- * POST /api/access-logs
- * Create a new access log record
- */
-patientRouter.post('/access-logs', createAccessLogController);
-
-/**
- * PUT /api/access-logs/:accessLogId
- * Update a specific access log record
- */
-patientRouter.put('/access-logs/:accessLogId', updateAccessLogController);
-
-// ==================
-// EMERGENCY SOS
-// ==================
-
-/**
- * POST /api/emergency
- * Activate emergency SOS - notifies emergency contacts and shares critical info
- */
-patientRouter.post('/emergency', validateBody(createEmergencySosSchema), activateEmergencySosController);
-
-/**
- * GET /api/emergency
- * Get list of all emergency SOS records
- * 
- * GET /api/emergency/:sosId
- * Get specific emergency SOS record details
- */
-patientRouter.get('/emergency/:sosId', getEmergencySosDetailController);
-patientRouter.get('/emergency', getEmergencySosHistoryController);
-
-/**
- * PUT /api/emergency/:sosId
- * Update emergency SOS status
- */
-patientRouter.put('/emergency/:sosId', updateEmergencySosController);

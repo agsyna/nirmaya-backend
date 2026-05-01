@@ -1,6 +1,7 @@
 import { eq, and, or, isNull, desc, ne, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { shareTokens } from '../schema';
+import type { ShareToken } from '../schema';
 import { AppError } from '../utils/appError';
 import crypto from 'crypto';
 
@@ -184,7 +185,7 @@ export const getActiveShareTokensByPatient = async (patientId: string) => {
     )
     .orderBy(desc(shareTokens.createdAt));
 
-  return tokens.filter(token => {
+  return tokens.filter((token: ShareToken) => {
     // Filter out expired tokens if expiresAt is set
     if (token.expiresAt && new Date() > token.expiresAt) {
       return false;

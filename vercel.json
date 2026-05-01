@@ -6,7 +6,7 @@
       "src": "api/index.ts",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 19,
+        "maxDuration": 30,
         "memory": 1024
       }
     }
@@ -15,7 +15,9 @@
     {
       "src": "/health",
       "dest": "/api/index.ts",
-      "methods": ["GET"]
+      "methods": [
+        "GET"
+      ]
     },
     {
       "src": "/(.*)",

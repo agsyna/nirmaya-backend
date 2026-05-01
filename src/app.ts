@@ -7,7 +7,9 @@ import { errorHandler, notFound } from './middlewares/errorHandler';
 import { env } from './config/env';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
-
+import { db, hasDbError } from './db';
+import { sql } from 'drizzle-orm';
+import { getSupabaseAdmin } from './lib/supabase';
 
 export const app = express();
 
@@ -25,7 +27,7 @@ const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
 // Check for critical missing environment variables before processing requests
-app.use((req, res, next) => {
+app.use((_req, res, next): void => {
   if (env.isProduction) {
     const missingVars = [];
     if (env.databaseUrl === 'MISSING_DATABASE_URL') {
@@ -37,11 +39,12 @@ app.use((req, res, next) => {
 
     if (missingVars.length > 0) {
       console.error('[ENV] Missing critical vars:', missingVars);
-      return res.status(503).json({
+      res.status(503).json({
         error: 'Service misconfigured',
         message: 'Required environment variables are not set',
         missing: missingVars
       });
+      return;
     }
   }
   next();
@@ -51,6 +54,10 @@ app.use((req, res, next) => {
 let swaggerSpecs: any = null;
 const getSwaggerSpecs = () => {
   if (!swaggerSpecs) {
+    const swaggerApiGlobs = env.isProduction
+      ? ['./dist/src/routes/**/*.js', './dist/src/controllers/**/*.js']
+      : ['./src/routes/**/*.ts', './src/controllers/**/*.ts'];
+
     swaggerSpecs = swaggerJsdoc({
       definition: {
         openapi: '3.0.0',
@@ -75,10 +82,7 @@ const getSwaggerSpecs = () => {
           },
         },
       },
-      apis: [
-        './dist/src/routes/**/*.js',
-        './dist/src/controllers/**/*.js',
-      ],
+      apis: swaggerApiGlobs,
     });
   }
   return swaggerSpecs;
@@ -112,7 +116,7 @@ const getSwaggerSpecs = () => {
  */
 app.use('/api-docs', swaggerUi.serve, (req: any, res: any, next: any) => swaggerUi.setup(getSwaggerSpecs())(req, res, next));
 
-app.get('/health', (_request, response) => {
+app.get('/health', async (_request, response) => {
   const missingVars = [];
   if (env.isProduction) {
     if (env.databaseUrl === 'MISSING_DATABASE_URL') missingVars.push('DATABASE_URL');
@@ -121,18 +125,83 @@ app.get('/health', (_request, response) => {
   
   if (missingVars.length > 0) {
     response.status(503).json({ 
-      status: 'unhealthy',
+      status: 'error',
       message: 'Missing environment variables',
-      missing: missingVars,
-      timestamp: new Date().toISOString() 
+      data: {
+        status: 'unhealthy',
+        missing: missingVars,
+        timestamp: new Date().toISOString(),
+      }
     });
-  } else {
-    response.status(200).json({ 
-      status: 'ok',
-      environment: env.nodeEnv,
-      timestamp: new Date().toISOString() 
-    });
+    return;
   }
+
+  const startTime = Date.now();
+  let dbStatus = 'disconnected';
+  let dbError = null;
+  let dbLatency = 0;
+
+  // Check database connection
+  try {
+    if (hasDbError()) {
+      dbStatus = 'disconnected';
+      dbError = 'Database initialization failed';
+    } else {
+      const dbStart = Date.now();
+      await db.execute(sql`SELECT 1`);
+      dbLatency = Date.now() - dbStart;
+      dbStatus = 'connected';
+    }
+  } catch (error) {
+    dbStatus = 'disconnected';
+    dbError = error instanceof Error ? error.message : 'Unknown database error';
+  }
+
+  // Check Supabase connection
+  let supabaseStatus = 'disconnected';
+  let supabaseError = null;
+  let supabaseLatency = 0;
+
+  try {
+    if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
+      supabaseStatus = 'not-configured';
+    } else {
+      const supabaseStart = Date.now();
+      const supabase = getSupabaseAdmin();
+      // Test storage bucket access
+      await supabase.storage.listBuckets();
+      supabaseLatency = Date.now() - supabaseStart;
+      supabaseStatus = 'connected';
+    }
+  } catch (error) {
+    supabaseStatus = 'disconnected';
+    supabaseError = error instanceof Error ? error.message : 'Unknown Supabase error';
+  }
+
+  const responseTime = Date.now() - startTime;
+  const isHealthy = dbStatus === 'connected' && (supabaseStatus === 'connected' || supabaseStatus === 'not-configured');
+
+  response.status(isHealthy ? 200 : 503).json({ 
+    status: 'success',
+    data: {
+      status: isHealthy ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      environment: env.nodeEnv,
+      uptime: process.uptime(),
+      responseTime,
+      database: {
+        status: dbStatus,
+        latency: dbLatency,
+        error: dbError
+      },
+      supabase: {
+        status: supabaseStatus,
+        latency: supabaseLatency,
+        error: supabaseError
+      }
+    }
+  });
 });
 
 app.use('/api', apiRouter);

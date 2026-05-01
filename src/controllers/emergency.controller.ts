@@ -45,11 +45,11 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
 
   const criticalInfo = {
     bloodGroup: patient.bloodGroup,
-    allergies: allergies.map((a) => ({
+    allergies: allergies.map((a: any) => ({
       name: a.allergyName,
       severity: a.severity,
     })),
-    chronicConditions: chronicConditions.map((cc) => ({
+    chronicConditions: chronicConditions.map((cc: any) => ({
       name: cc.conditionName,
       status: cc.status,
     })),
@@ -127,6 +127,8 @@ export const updateEmergencySosController = asyncHandler(async (request: Request
  */
 export const getEmergencySosHistoryController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
+  const limit = Math.min(Number(request.query.limit) || 10, 100);
+  const offset = Number(request.query.offset) || 0;
 
   if (!userId) {
     throw new AppError(401, 'Unauthorized');
@@ -139,10 +141,11 @@ export const getEmergencySosHistoryController = asyncHandler(async (request: Req
   }
 
   const sosList = await getEmergencySosByPatient(patient.patientId);
+  const paginatedSos = sosList.slice(offset, offset + limit);
 
   response.status(200).json({
     status: 'success',
-    data: sosList.map((sos) => ({
+    data: paginatedSos.map((sos: any) => ({
       sosId: sos.sosId,
       status: sos.status,
       latitude: sos.latitude,
@@ -154,7 +157,11 @@ export const getEmergencySosHistoryController = asyncHandler(async (request: Req
       resolvedAt: sos.resolvedAt,
     })),
     meta: {
-      count: sosList.length,
+      count: paginatedSos.length,
+      total: sosList.length,
+      limit,
+      offset,
+      hasMore: offset + paginatedSos.length < sosList.length,
     },
   });
 });

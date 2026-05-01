@@ -66,3 +66,35 @@ export const requirePatient = (request: Request, _response: Response, next: Next
 
   next();
 };
+
+export const optionalAuthenticate = async (request: Request, _response: Response, next: NextFunction) => {
+  const authorization = request.headers.authorization;
+
+  if (!authorization?.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+
+  try {
+    const token = authorization.slice(7).trim();
+    const payload = verifyAccessToken(token);
+
+    const [user] = await db
+      .select({ userId: users.userId, email: users.email, role: users.type })
+      .from(users)
+      .where(eq(users.userId, payload.userId))
+      .limit(1);
+
+    if (user) {
+      request.auth = {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      };
+    }
+  } catch {
+    // Ignore invalid optional auth and continue as public request.
+  }
+
+  next();
+};

@@ -8,7 +8,7 @@ import { AppError } from '../utils/appError';
  * Handles all database queries related to medical records (reports, prescriptions, etc)
  */
 
-export const getMedicalRecordsByPatientAndType = async (patientId: string, type: 'report' | 'prescription') => {
+export const getMedicalRecordsByPatientAndType = async (patientId: string, type: 'report' | 'prescription', limit: number = 1000) => {
   const records = await db
     .select()
     .from(medicalRecords)
@@ -18,7 +18,8 @@ export const getMedicalRecordsByPatientAndType = async (patientId: string, type:
         eq(medicalRecords.type, type)
       )
     )
-    .orderBy(desc(medicalRecords.createdAt));
+    .orderBy(desc(medicalRecords.createdAt))
+    .limit(limit);
   return records;
 };
 

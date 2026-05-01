@@ -21,6 +21,16 @@ const doctorSpecializationValues = [
   'urology',
   'other',
 ] as const;
+const emergencyRelationshipValues = [
+  'spouse',
+  'parent',
+  'sibling',
+  'child',
+  'relative',
+  'friend',
+  'caregiver',
+  'other',
+] as const;
 
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -44,6 +54,27 @@ export const registerPatientSchema = z.object({
   age: z.number().int().positive().optional(),
   gender: z.enum(genderValues).optional(),
   bloodGroup: z.enum(bloodGroupValues).optional(),
+  height: z.number().positive().optional(),
+  weight: z.number().positive().optional(),
+  heartRate: z.number().int().positive().optional(),
+  bloodPressure: z.string().regex(/^\d+\/\d+$/).optional(),
+  bloodGlucose: z.number().positive().optional(),
+  allergies: z.array(z.object({
+    name: z.string(),
+    severity: z.enum(['mild', 'moderate', 'severe'])
+  })).optional(),
+  chronicConditions: z.array(z.object({
+    name: z.string(),
+    diagnosisDate: z.string().date().optional(), // YYYY-MM-DD
+    status: z.enum(['active', 'inactive', 'resolved']).optional(),
+    notes: z.string().optional(),
+  })).optional(),
+  emergencyContacts: z.array(z.object({
+    name: z.string(),
+    phone: z.string().max(20),
+    relationship: z.enum(emergencyRelationshipValues).optional(),
+    priority: z.number().int().min(1).max(10).optional(),
+  })).optional()
 });
 
 export const registerDoctorSchema = z.object({

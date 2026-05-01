@@ -26,7 +26,7 @@ export const validateShareTokenMiddleware = async (
     }
 
     // Get doctor ID from authenticated user if available
-    const doctorId = request.auth?.userId;
+    const doctorId = request.auth?.role === 'doctor' ? request.auth.userId : undefined;
 
     // Validate the token
     const shareToken = await validateShareToken(tokenParam, doctorId);

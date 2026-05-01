@@ -1,6 +1,6 @@
 import { and, eq, gt } from 'drizzle-orm';
 import { db } from '../db';
-import { doctors, patients, users } from '../schema';
+import { allergies, chronicConditions, doctors, emergencyContacts, patients, users } from '../schema';
 import { AppError } from '../utils/appError';
 import { comparePassword, hashPassword } from '../lib/password';
 import { createResetToken, hashResetToken } from '../lib/token';
@@ -14,6 +14,23 @@ type RegisterPatientInput = {
   age?: number;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   bloodGroup?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+  allergies?: Array<{
+    name: string;
+    severity: 'mild' | 'moderate' | 'severe';
+    description?: string;
+  }>;
+  chronicConditions?: Array<{
+    name: string;
+    diagnosisDate?: string;
+    status?: 'active' | 'inactive' | 'resolved';
+    notes?: string;
+  }>;
+  emergencyContacts?: Array<{
+    name: string;
+    phone: string;
+    relationship?: 'spouse' | 'parent' | 'sibling' | 'child' | 'relative' | 'friend' | 'caregiver' | 'other';
+    priority?: number;
+  }>;
 };
 
 type RegisterDoctorInput = RegisterPatientInput & {
@@ -54,7 +71,7 @@ export const registerPatient = async (input: RegisterPatientInput) => {
 
   const password = await hashPassword(input.password);
 
-  const created = await db.transaction(async (transaction) => {
+  const created = await db.transaction(async (transaction: any) => {
     const [user] = await transaction
       .insert(users)
       .values({
@@ -75,6 +92,41 @@ export const registerPatient = async (input: RegisterPatientInput) => {
         bloodGroup: input.bloodGroup,
       })
       .returning();
+
+    if (input.allergies && input.allergies.length > 0) {
+      await transaction.insert(allergies).values(
+        input.allergies.map((allergy) => ({
+          patientId: patient.patientId,
+          allergyName: allergy.name,
+          severity: allergy.severity,
+          description: allergy.description,
+        }))
+      );
+    }
+
+    if (input.chronicConditions && input.chronicConditions.length > 0) {
+      await transaction.insert(chronicConditions).values(
+        input.chronicConditions.map((condition) => ({
+          patientId: patient.patientId,
+          conditionName: condition.name,
+          diagnosisDate: condition.diagnosisDate,
+          status: condition.status ?? 'active',
+          notes: condition.notes,
+        }))
+      );
+    }
+
+    if (input.emergencyContacts && input.emergencyContacts.length > 0) {
+      await transaction.insert(emergencyContacts).values(
+        input.emergencyContacts.map((contact, index) => ({
+          patientId: patient.patientId,
+          name: contact.name,
+          phone: contact.phone,
+          relationship: contact.relationship,
+          priority: contact.priority ?? index + 1,
+        }))
+      );
+    }
 
     return { user, patient };
   });
@@ -101,7 +153,7 @@ export const registerDoctor = async (input: RegisterDoctorInput) => {
 
   const password = await hashPassword(input.password);
 
-  const created = await db.transaction(async (transaction) => {
+  const created = await db.transaction(async (transaction: any) => {
     const [user] = await transaction
       .insert(users)
       .values({

@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/appError';
 import { getPatientByUserId, getUserWithPatient, getPatientHealthData, getPatientAllergies, getPatientChronicConditions } from '../repositories/patient.repository';
 import { createHealthRecord } from '../repositories/patient.repository';
+import type { HealthData, Allergy, ChronicCondition } from '../schema';
 import { z } from 'zod';
 
 /**
@@ -62,6 +63,8 @@ export const getCurrentUserController = asyncHandler(async (request: Request, re
  */
 export const getUserHealthController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
+  const limit = Math.min(Number(request.query.limit) || 10, 100);
+  const offset = Number(request.query.offset) || 0;
 
   if (!userId) {
     throw new AppError(401, 'Unauthorized');
@@ -75,10 +78,12 @@ export const getUserHealthController = asyncHandler(async (request: Request, res
 
   // Fetch all health-related data in parallel
   const [healthData, allergies, chronicConditions] = await Promise.all([
-    getPatientHealthData(patient.patientId, 50),
+    getPatientHealthData(patient.patientId, limit + offset),
     getPatientAllergies(patient.patientId),
     getPatientChronicConditions(patient.patientId),
   ]);
+
+  const paginatedHealthData = healthData.slice(offset, offset + limit);
 
   response.status(200).json({
     status: 'success',
@@ -89,7 +94,7 @@ export const getUserHealthController = asyncHandler(async (request: Request, res
         height: patient.height,
         weight: patient.weight,
       },
-      healthData: healthData.map((hd) => ({
+      healthData: paginatedHealthData.map((hd: HealthData) => ({
         healthDataId: hd.healthDataId,
         heartRate: hd.heartRate,
         bloodPressure: hd.bloodPressure,
@@ -99,19 +104,26 @@ export const getUserHealthController = asyncHandler(async (request: Request, res
         recordedAt: hd.recordedAt,
         notes: hd.notes,
       })),
-      allergies: allergies.map((a) => ({
+      allergies: allergies.map((a: Allergy) => ({
         allergyId: a.allergyId,
         allergyName: a.allergyName,
         severity: a.severity, // mild, moderate, severe
         description: a.description,
       })),
-      chronicConditions: chronicConditions.map((cc) => ({
+      chronicConditions: chronicConditions.map((cc: ChronicCondition) => ({
         conditionId: cc.conditionId,
         conditionName: cc.conditionName,
         status: cc.status, // active, inactive, resolved
         diagnosisDate: cc.diagnosisDate,
         notes: cc.notes,
       })),
+    },
+    meta: {
+      count: paginatedHealthData.length,
+      total: healthData.length,
+      limit,
+      offset,
+      hasMore: offset + paginatedHealthData.length < healthData.length,
     },
   });
 });

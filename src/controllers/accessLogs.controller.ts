@@ -63,7 +63,7 @@ export const getAccessLogsController = asyncHandler(async (request: Request, res
 
   response.status(200).json({
     status: 'success',
-    data: logs.map((log) => ({
+    data: logs.map((log: any) => ({
       accessLogId: log.auditId,
       action: log.action,
       status: log.status,

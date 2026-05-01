@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requirePatient } from '../middlewares/auth';
+import { authenticate, optionalAuthenticate, requirePatient } from '../middlewares/auth';
 import { validateShareTokenMiddleware } from '../middlewares/shareToken';
 import {
   createShareTokenController,
@@ -14,7 +14,7 @@ export const shareTokenRouter = Router();
 
 /**
  * @swagger
- * /api/v1/share-tokens:
+ * /api/v1/patient/share-tokens:
  *   post:
  *     summary: Create a share token
  *     description: Generate a new share token to allow others to access your medical data
@@ -67,7 +67,7 @@ shareTokenRouter.get('/share-tokens', authenticate, requirePatient, getShareToke
 
 /**
  * @swagger
- * /api/v1/share-tokens/{tokenId}:
+ * /api/v1/patient/share-tokens/{tokenId}:
  *   delete:
  *     summary: Revoke a share token
  *     description: Revoke/deactivate a share token to prevent further access
@@ -126,4 +126,4 @@ shareTokenRouter.delete('/share-tokens/:tokenId', authenticate, requirePatient, 
  *       403:
  *         description: Access denied
  */
-shareTokenRouter.post('/share/:token/access', validateShareTokenMiddleware, accessSharedDataController);
+shareTokenRouter.post('/share/:token/access', optionalAuthenticate, validateShareTokenMiddleware, accessSharedDataController);

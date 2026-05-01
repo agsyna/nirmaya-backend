@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authRouter } from './auth.routes';
 import { patientRouter } from './patient.routes';
 import { shareTokenRouter } from './shareToken.routes';
+import { adminRouter } from './admin.routes';
 
 const v1Router = Router();
 
@@ -15,6 +16,9 @@ v1Router.use('/auth', authRouter);
 
 // Patient & Health Data routes - authenticated
 v1Router.use('/patient', patientRouter);
+
+// Admin routes - authenticated admin
+v1Router.use('/admin', adminRouter);
 
 // Share token routes - for data sharing
 v1Router.use('/patient', shareTokenRouter);

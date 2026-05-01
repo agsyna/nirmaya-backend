@@ -21,19 +21,16 @@ export const authRouter = Router();
  *             required:
  *               - email
  *               - password
- *               - firstName
- *               - lastName
+ *               - name
  *             properties:
+ *               name:
+ *                 type: string
  *               email:
  *                 type: string
  *                 format: email
  *               password:
  *                 type: string
- *                 minLength: 6
- *               firstName:
- *                 type: string
- *               lastName:
- *                 type: string
+ *                 minLength: 8
  *     responses:
  *       201:
  *         description: Patient registered successfully
@@ -124,11 +121,11 @@ authRouter.post('/forgot-password', validateBody(forgotPasswordSchema), forgotPa
  *             type: object
  *             required:
  *               - token
- *               - newPassword
+ *               - password
  *             properties:
  *               token:
  *                 type: string
- *               newPassword:
+ *               password:
  *                 type: string
  *                 minLength: 6
  *     responses:
