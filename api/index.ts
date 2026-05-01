@@ -1,75 +1,53 @@
 import serverless from 'serverless-http';
-import { app } from '../src/app';
-import { env } from '../src/config/env';
 
-console.log('[INIT] Starting serverless handler initialization...');
+console.log('[API] Handler module loaded');
 
-// Startup validation
-const missingVars = [];
-if (env.isProduction) {
-  if (env.databaseUrl === 'MISSING_DATABASE_URL') missingVars.push('DATABASE_URL');
-  if (env.jwtSecret === 'MISSING_JWT_SECRET') missingVars.push('JWT_SECRET');
-}
+// Lazy-load app to prevent hanging during module init
+let app: any = null;
+let handler: any = null;
 
-if (missingVars.length > 0) {
-  console.error(`\n STARTUP ERROR: Missing environment variables:\n   ${missingVars.join('\n   ')}\n`);
-}
+function getHandler() {
+  if (handler) return handler;
 
-// CRITICAL: Set aggressive request timeout BEFORE wrapping with serverless-http
-app.use((req, res, next) => {
-  const timeoutHandle = setTimeout(() => {
-    if (!res.headersSent) {
-      console.error('[TIMEOUT] Request timeout after 20 seconds:', req.method, req.path);
-      res.status(503).json({ 
-        error: 'Request timeout', 
-        message: 'The server took too long to respond'
-      });
-    }
-  }, 20000); // 20 second hard timeout
-
-  // Clean up timeout if response completes
-  res.on('finish', () => clearTimeout(timeoutHandle));
-  res.on('close', () => clearTimeout(timeoutHandle));
-
-  next();
-});
-
-// Handle timeout errors
-app.use((err: any, _req: any, res: any, next: any) => {
-  if (err.code === 'ETIMEDOUT' || err.code === 'EHOSTUNREACH') {
-    console.error('[TIMEOUT]', err.message);
-    if (!res.headersSent) {
-      return res.status(503).json({ 
-        error: 'Request timeout', 
-        message: 'The server took too long to respond' 
-      });
-    }
-  }
-  next(err);
-});
-
-const handler = serverless(app);
-
-console.log('[INIT] Serverless handler initialized successfully');
-
-// Wrapper with emergency timeout (15 seconds total)
-export default async (req: any, res: any) => {
-  const startTime = Date.now();
-  
-  const timeoutId = setTimeout(() => {
-    const elapsed = Date.now() - startTime;
-    console.error(`[EMERGENCY TIMEOUT] Function exceeded 15 seconds (${elapsed}ms)`);
-    if (!res.headersSent) {
-      res.status(503).json({ 
-        error: 'Service timeout',
-        duration: elapsed 
-      });
-    }
-  }, 15000);
-
+  console.log('[API] Initializing app and handler...');
   try {
-    return await handler(req, res);
-  } finally {
-    clearTimeout(timeoutId);
+    // Dynamic import only when needed
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const appModule = require('../src/app');
+    app = appModule.app;
+
+    handler = serverless(app);
+    console.log('[API] Handler ready');
+    return handler;
+  } catch (error) {
+    console.error('[API] Init error:', error);
+    throw error;
+  }
+}
+
+export default (req: any, res: any) => {
+  try {
+    // Fast-path: health check without app
+    if (req.method === 'GET' && (req.url === '/health' || req.url === '/')) {
+      console.log('[HEALTH] Direct response');
+      res.setHeader('Content-Type', 'application/json');
+      res.writeHead(200);
+      res.end(JSON.stringify({ 
+        status: 'ok',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    // Full app handler for all other routes
+    console.log('[API] Route:', req.method, req.url);
+    const handler = getHandler();
+    handler(req, res);
+  } catch (error) {
+    console.error('[API] Error:', error);
+    if (!res.headersSent) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Internal error' }));
+    }
   }
 };
