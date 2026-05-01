@@ -3,15 +3,20 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 import { env } from './config/env';
 
-// Create connection pool with minimal initialization
-// Don't validate connection on creation to avoid hanging on Vercel cold starts
+// Create connection pool with Vercel serverless optimizations
+// Reduce pool size for serverless to avoid connection limits
+// Set aggressive timeouts to prevent hanging connections
 const pool = new Pool({
   connectionString: env.databaseUrl,
-  max: env.isProduction ? 5 : 20,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 3000,
-  statement_timeout: 10000,
+  max: env.isProduction ? 2 : 20,  // Reduced from 5 to 2 for Vercel
+  min: env.isProduction ? 0 : 1,   // No persistent connections in production
+  idleTimeoutMillis: env.isProduction ? 5000 : 10000,  // Shorter idle timeout for Vercel
+  connectionTimeoutMillis: 2000,    // Reduced from 3000 to 2000
+  statement_timeout: 8000,          // Reduced from 10000 to 8000
+  query_timeout: 8000,              // Add explicit query timeout
   application_name: 'nirmaya_backend',
+  // Vercel specific: prevent connection from hanging
+  keepAlive: true,
 });
 
 pool.on('error', (err) => {
