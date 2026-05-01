@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 });
 
 // Handle timeout errors
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err: any, _req: any, res: any, next: any) => {
   if (err.code === 'ETIMEDOUT' || err.code === 'EHOSTUNREACH') {
     console.error('[TIMEOUT]', err.message);
     return res.status(503).json({ 
