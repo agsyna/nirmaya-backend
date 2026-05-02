@@ -1,9 +1,27 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { forgotPasswordController, loginController, registerPatientController, resetPasswordController } from '../controllers/auth.controller';
 import { validateBody } from '../middlewares/validate';
 import { forgotPasswordSchema, loginSchema, registerPatientSchema, resetPasswordSchema } from '../validators/auth.validators';
 
 export const authRouter = Router();
+
+// Rate limiting - prevent brute force attacks
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests per windowMs
+  message: { error: 'Too many authentication attempts, please try again later' },
+  standardHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'development', // Skip in dev
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 registration attempts per hour per IP
+  message: { error: 'Too many registration attempts, please try again later' },
+  standardHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'development',
+});
 
 /**
  * @swagger
@@ -37,7 +55,7 @@ export const authRouter = Router();
  *       400:
  *         description: Invalid input or email already exists
  */
-authRouter.post('/register/patient', validateBody(registerPatientSchema), registerPatientController);
+authRouter.post('/register/patient', registerLimiter, validateBody(registerPatientSchema), registerPatientController);
 
 /**
  * @swagger
@@ -77,7 +95,7 @@ authRouter.post('/register/patient', validateBody(registerPatientSchema), regist
  *       401:
  *         description: Invalid credentials
  */
-authRouter.post('/login', validateBody(loginSchema), loginController);
+authRouter.post('/login', authLimiter, validateBody(loginSchema), loginController);
 
 /**
  * @swagger
@@ -104,7 +122,7 @@ authRouter.post('/login', validateBody(loginSchema), loginController);
  *       404:
  *         description: User not found
  */
-authRouter.post('/forgot-password', validateBody(forgotPasswordSchema), forgotPasswordController);
+authRouter.post('/forgot-password', authLimiter, validateBody(forgotPasswordSchema), forgotPasswordController);
 
 /**
  * @swagger
@@ -134,4 +152,4 @@ authRouter.post('/forgot-password', validateBody(forgotPasswordSchema), forgotPa
  *       400:
  *         description: Invalid or expired token
  */
-authRouter.post('/reset-password', validateBody(resetPasswordSchema), resetPasswordController);
+authRouter.post('/reset-password', authLimiter, validateBody(resetPasswordSchema), resetPasswordController);

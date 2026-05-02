@@ -21,14 +21,21 @@ app.use(cors({
   credentials: true,
 }));
 
-// Request timeout middleware - MUST be FIRST (before body parsing)
-app.use((req, res, next) => {
-  req.setTimeout(25000);
-  res.setTimeout(25000);
-  next();
-});
 
 app.use(express.json({ limit: '1mb' }));
+
+// Serverless cleanup middleware - ensure db pool closes after each request
+app.use((_req, res, next) => {
+  const originalSend = res.send;
+  res.send = function(data) {
+    // After response is sent, cleanup database connections in serverless
+    if (env.isProduction && (global as any).__dbCleanup) {
+      void (global as any).__dbCleanup();
+    }
+    return originalSend.call(this, data);
+  };
+  next();
+});
 
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
@@ -59,8 +66,15 @@ app.use((_req, res, next): void => {
 
 // Lazy-load Swagger specs on first request to avoid cold start timeout
 let swaggerSpecs: any = null;
+let swaggerError: Error | null = null;
+
 const getSwaggerSpecs = () => {
-  if (!swaggerSpecs) {
+  if (swaggerSpecs || swaggerError) {
+    if (swaggerError) throw swaggerError;
+    return swaggerSpecs;
+  }
+
+  try {
     const swaggerApiGlobs = env.isProduction
       ? ['./dist/src/routes/**/*.js', './dist/src/controllers/**/*.js']
       : ['./src/routes/**/*.ts', './src/controllers/**/*.ts'];
@@ -91,8 +105,13 @@ const getSwaggerSpecs = () => {
       },
       apis: swaggerApiGlobs,
     });
+    console.log('[SWAGGER] Specs generated successfully');
+  } catch (error) {
+    swaggerError = error instanceof Error ? error : new Error('Unknown swagger error');
+    console.error('[SWAGGER] Failed to generate specs:', swaggerError.message);
   }
-  return swaggerSpecs;
+
+  return swaggerSpecs || {};
 };
 
 /**

@@ -8,6 +8,12 @@ export const notFound = (_request: Request, response: Response) => {
 };
 
 export const errorHandler = (error: unknown, request: Request, response: Response, _next: NextFunction) => {
+  // Prevent double response
+  if (response.headersSent) {
+    console.error('[ERROR HANDLER] Headers already sent, cannot send error response:', error);
+    return;
+  }
+
   // Log errors in production
   if (env.isProduction) {
     console.error({

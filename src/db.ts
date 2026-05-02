@@ -48,22 +48,32 @@ function ensurePool() {
     dbInstance = drizzle(pool, { schema });
     console.log('[DB] Pool created');
 
-    // Register shutdown handler only once
-    if (!shutdownHandlerRegistered && !env.isProduction) {
+    // Register shutdown handlers
+    if (!shutdownHandlerRegistered) {
       shutdownHandlerRegistered = true;
-      process.on('SIGINT', async () => {
+
+      // Standard process termination
+      const cleanup = async () => {
         if (pool && !pool.ending) {
           try {
             await pool.end();
             console.log('[DB] Pool closed gracefully');
           } catch (e) {
-            // Ignore "pool already ended" errors
             if (!(e instanceof Error && e.message.includes('more than once'))) {
               console.error('[DB] Shutdown error:', e);
             }
           }
         }
-      });
+      };
+
+      process.on('SIGINT', cleanup);
+      process.on('SIGTERM', cleanup);
+      
+      // Vercel serverless function exit - cleanup on function return
+      if (env.isProduction) {
+        // Export cleanup for manual invocation after each request
+        (global as any).__dbCleanup = cleanup;
+      }
     }
   } catch (error) {
     console.error('[DB] Pool creation error:', error);
