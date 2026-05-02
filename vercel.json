@@ -1,12 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
+  
   "routes": [
     {
       "src": "/(.*)",
@@ -15,6 +10,7 @@
   ],
   "functions": {
     "api/index.ts": {
+      "runtime": "@vercel/node",
       "maxDuration": 30,
       "memory": 1024
     }
