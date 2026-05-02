@@ -23,13 +23,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
-// Set request timeout to prevent indefinite hangs (25s, leaving 5s buffer for Vercel 30s limit)
-app.use((req, res, next) => {
-  req.setTimeout(25000);
-  res.setTimeout(25000);
-  next();
-});
-
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
