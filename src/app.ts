@@ -23,6 +23,13 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
+// Set request timeout to prevent indefinite hangs (25s, leaving 5s buffer for Vercel 30s limit)
+app.use((req, res, next) => {
+  req.setTimeout(25000);
+  res.setTimeout(25000);
+  next();
+});
+
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
@@ -153,14 +160,20 @@ app.get('/health', async (_request, response) => {
   let dbError = null;
   let dbLatency = 0;
 
-  // Check database connection
+  // Check database connection with timeout
   try {
     if (hasDbError()) {
       dbStatus = 'disconnected';
       dbError = 'Database initialization failed';
     } else {
       const dbStart = Date.now();
-      await db.execute(sql`SELECT 1`);
+      // Use Promise.race to enforce timeout on DB check
+      await Promise.race([
+        db.execute(sql`SELECT 1`),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timeout')), 5000)
+        )
+      ]);
       dbLatency = Date.now() - dbStart;
       dbStatus = 'connected';
     }

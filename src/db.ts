@@ -29,15 +29,15 @@ function ensurePool() {
 
     pool = new Pool({
       connectionString: env.databaseUrl,
-      max: env.isProduction ? 1 : 5,
+      max: env.isProduction ? 2 : 5,
       min: 0,
-      idleTimeoutMillis: 1000, // Shorter idle timeout
-      connectionTimeoutMillis: 3000, // Allow 3s to connect
+      idleTimeoutMillis: 30000, // 30s idle timeout (prevent premature closure)
+      connectionTimeoutMillis: 5000, // Allow 5s to connect to remote Supabase
       statement_timeout: 8000, // 8s per query
       query_timeout: 8000,
       application_name: 'nirmaya_backend',
-      keepAlive: false, // Disable keep-alive in serverless
-      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+      keepAlive: true, // Keep connections alive for pooler
+      ssl: useSsl ? { rejectUnauthorized: false } : false,
     });
 
     pool.on('error', (err) => {

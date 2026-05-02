@@ -26,10 +26,10 @@ const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean
 const databaseUrl = process.env.DATABASE_URL || (isDevelopment ? 'postgresql://postgres:password@localhost:5432/nirmaya_db' : '');
 
 // Ensure SSL mode is set for Supabase connections (critical for Vercel)
+// NOTE: Don't append sslmode to URL - the Pool config handles SSL via ssl object
 const ensureSslMode = (url: string): string => {
   if (!url) return url;
-  if (/sslmode/i.test(url)) return url; // Already has sslmode
-  if (/supabase\.com/i.test(url)) return url + (url.includes('?') ? '&' : '?') + 'sslmode=require';
+  // Don't append sslmode - let Pool's ssl config handle it
   return url;
 };
 
