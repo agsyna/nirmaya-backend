@@ -25,16 +25,16 @@ function ensurePool() {
   console.log('[DB] Creating pool...');
 
   try {
-    const useSsl = env.dbSslEnabled;
+    const useSsl = env.dbSslEnabled || env.isProduction; // Force SSL in production
 
     pool = new Pool({
       connectionString: env.databaseUrl,
-      max: env.isProduction ? 2 : 5,
+      max: env.isProduction ? 1 : 5, // Ultra-conservative for Vercel
       min: 0,
-      idleTimeoutMillis: 5000,
-      connectionTimeoutMillis: 3000,
-      statement_timeout: 8000,
-      query_timeout: 8000,
+      idleTimeoutMillis: 3000, // Reduced from 5000ms
+      connectionTimeoutMillis: 1500, // Reduced from 3000ms - fail fast
+      statement_timeout: 5000, // Reduced from 8000ms
+      query_timeout: 5000,
       application_name: 'nirmaya_backend',
       keepAlive: true,
       ssl: useSsl ? { rejectUnauthorized: false } : undefined,

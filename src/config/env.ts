@@ -25,7 +25,15 @@ const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean
 
 const databaseUrl = process.env.DATABASE_URL || (isDevelopment ? 'postgresql://postgres:password@localhost:5432/nirmaya_db' : '');
 
-const databaseDirectUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || databaseUrl;
+// Ensure SSL mode is set for Supabase connections (critical for Vercel)
+const ensureSslMode = (url: string): string => {
+  if (!url) return url;
+  if (/sslmode/i.test(url)) return url; // Already has sslmode
+  if (/supabase\.com/i.test(url)) return url + (url.includes('?') ? '&' : '?') + 'sslmode=require';
+  return url;
+};
+
+const databaseDirectUrl = ensureSslMode(process.env.DATABASE_URL || process.env.DIRECT_URL || databaseUrl);
 
 const isSupabaseConnection = /supabase\.com/i.test(databaseUrl);
 
@@ -34,7 +42,7 @@ export const env = {
   port: Number(process.env.PORT ?? 3000),
   jwtSecret: isDevelopment ? 'dev-jwt-secret-only-for-local-testing' : (getEnv('JWT_SECRET') || 'MISSING_JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
-  databaseUrl: databaseUrl || 'MISSING_DATABASE_URL',
+  databaseUrl: ensureSslMode(databaseUrl) || 'MISSING_DATABASE_URL',
   databaseDirectUrl: databaseDirectUrl || 'MISSING_DATABASE_URL',
   dbSslEnabled: parseBoolean(process.env.DB_SSL_ENABLED, isSupabaseConnection),
   corsOrigin: process.env.CORS_ORIGIN ?? (isDevelopment ? 'http://localhost:3000' : ''),
