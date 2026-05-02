@@ -29,7 +29,7 @@ function ensurePool() {
 
     pool = new Pool({
       connectionString: env.databaseUrl,
-      max: env.isProduction ? 2 : 5,
+      max: env.isProduction ? 1 : 5, // CRITICAL: Must be 1 when using pgbouncer connection_limit=1
       min: 0,
       idleTimeoutMillis: 30000, // 30s idle timeout (prevent premature closure)
       connectionTimeoutMillis: 5000, // Allow 5s to connect to remote Supabase
