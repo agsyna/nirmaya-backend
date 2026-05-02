@@ -1,7 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { patients, users, allergies, chronicConditions, vaccinations, healthData } from '../schema';
-import type { Allergy, Vaccination } from '../schema';
 
 /**
  * Patient Repository
@@ -61,7 +60,7 @@ export const getPatientAllergies = async (patientId: string) => {
     .select()
     .from(allergies)
     .where(eq(allergies.patientId, patientId))
-    .orderBy((t: Allergy) => t.severity);
+    .orderBy(allergies.severity);
   return data;
 };
 
@@ -78,7 +77,7 @@ export const getPatientVaccinations = async (patientId: string) => {
     .select()
     .from(vaccinations)
     .where(eq(vaccinations.patientId, patientId))
-    .orderBy((t: Vaccination) => t.dateAdministered);
+    .orderBy(vaccinations.dateAdministered);
   return data;
 };
 
