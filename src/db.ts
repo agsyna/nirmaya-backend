@@ -29,14 +29,14 @@ function ensurePool() {
 
     pool = new Pool({
       connectionString: env.databaseUrl,
-      max: env.isProduction ? 1 : 5, // Ultra-conservative for Vercel
+      max: env.isProduction ? 1 : 5,
       min: 0,
-      idleTimeoutMillis: 3000, // Reduced from 5000ms
-      connectionTimeoutMillis: 1500, // Reduced from 3000ms - fail fast
-      statement_timeout: 5000, // Reduced from 8000ms
-      query_timeout: 5000,
+      idleTimeoutMillis: 1000, // Shorter idle timeout
+      connectionTimeoutMillis: 3000, // Allow 3s to connect
+      statement_timeout: 8000, // 8s per query
+      query_timeout: 8000,
       application_name: 'nirmaya_backend',
-      keepAlive: true,
+      keepAlive: false, // Disable keep-alive in serverless
       ssl: useSsl ? { rejectUnauthorized: false } : undefined,
     });
 
@@ -45,8 +45,13 @@ function ensurePool() {
       dbError = err;
     });
 
+    // Handle connection timeout
+    pool.on('connect', () => {
+      console.log('[DB] Connection established');
+    });
+
     dbInstance = drizzle(pool, { schema });
-    console.log('[DB] Pool created');
+    console.log('[DB] Pool created successfully');
 
     // Register shutdown handlers
     if (!shutdownHandlerRegistered) {
@@ -68,12 +73,6 @@ function ensurePool() {
 
       process.on('SIGINT', cleanup);
       process.on('SIGTERM', cleanup);
-      
-      // Vercel serverless function exit - cleanup on function return
-      if (env.isProduction) {
-        // Export cleanup for manual invocation after each request
-        (global as any).__dbCleanup = cleanup;
-      }
     }
   } catch (error) {
     console.error('[DB] Pool creation error:', error);

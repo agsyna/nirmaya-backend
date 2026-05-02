@@ -32,25 +32,33 @@ function getHandler() {
 console.log('[API] Handler module ready');
 
 export default async (req: any, res: any) => {
+  console.log(`[REQUEST] ${req.method} ${req.url}`);
+  const startTime = Date.now();
+  
   try {
     const handler = getHandler();
     
     // Set hard timeout for the entire serverless function (27s, leaving 3s buffer for Vercel's 30s limit)
     const timeoutHandle = setTimeout(() => {
+      const elapsed = Date.now() - startTime;
+      console.error(`[HANDLER TIMEOUT] ${req.method} ${req.url} - ${elapsed}ms - no response sent`);
       if (!res.headersSent) {
-        console.error('[HANDLER TIMEOUT] Function timeout after 27s');
         res.statusCode = 503;
         res.end(JSON.stringify({ status: 'error', message: 'Request timeout' }));
       }
     }, 27000);
 
     try {
-      return await handler(req, res);
+      console.log(`[HANDLER] Executing ${req.method} ${req.url}`);
+      const result = await handler(req, res);
+      console.log(`[REQUEST_COMPLETE] ${req.method} ${req.url} - ${Date.now() - startTime}ms`);
+      return result;
     } finally {
       clearTimeout(timeoutHandle);
     }
   } catch (error) {
-    console.error('[API] Error:', error);
+    const elapsed = Date.now() - startTime;
+    console.error(`[API] ${req.method} ${req.url} - ${elapsed}ms - Error:`, error instanceof Error ? error.message : String(error));
     if (!res.headersSent) {
       res.statusCode = 500;
       res.end(JSON.stringify({ status: 'error', message: 'Internal server error' }));

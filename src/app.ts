@@ -21,19 +21,7 @@ app.use(cors({
   credentials: true,
 }));
 
-
 app.use(express.json({ limit: '1mb' }));
-
-// Serverless cleanup middleware - cleanup db pool after response is fully sent
-app.use((_req, res, next) => {
-  res.on('finish', () => {
-    // Clean up database pool after response is sent (for Vercel serverless)
-    if (env.isProduction && (global as any).__dbCleanup) {
-      void (global as any).__dbCleanup();
-    }
-  });
-  next();
-});
 
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
