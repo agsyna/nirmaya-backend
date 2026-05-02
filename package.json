@@ -6,7 +6,7 @@
   "author": "",
   "main": "dist/api/index.js",
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
   },
   "scripts": {
     "build": "tsc",
