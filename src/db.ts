@@ -19,12 +19,12 @@ function ensurePool() {
   try {
     pool = new Pool({
       connectionString: env.databaseUrl,
-      max: 1,                      // Must be 1 for pgbouncer
+      max: 1,
       min: 0,
-      idleTimeoutMillis: 10000,    // 10 seconds idle before close
-      connectionTimeoutMillis: 8000,
-      statement_timeout: 9000,
-      query_timeout: 9000,
+      idleTimeoutMillis: 0,
+      connectionTimeoutMillis: 2000,
+      statement_timeout: 8000,
+      query_timeout: 8000,
       ssl: { rejectUnauthorized: false },
       application_name: 'nirmaya_backend',
     });

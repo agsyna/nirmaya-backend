@@ -152,48 +152,63 @@ app.get('/health', async (_request, response) => {
   let dbStatus = 'disconnected';
   let dbError = null;
   let dbLatency = 0;
-
-  // Check database connection with timeout
-  try {
-    if (hasDbError()) {
-      dbStatus = 'disconnected';
-      dbError = 'Database initialization failed';
-    } else {
-      const dbStart = Date.now();
-      // Use Promise.race to enforce timeout on DB check
-      await Promise.race([
-        db.execute(sql`SELECT 1`),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout')), 5000)
-        )
-      ]);
-      dbLatency = Date.now() - dbStart;
-      dbStatus = 'connected';
-    }
-  } catch (error) {
-    dbStatus = 'disconnected';
-    dbError = error instanceof Error ? error.message : 'Unknown database error';
-  }
-
-  // Check Supabase connection
   let supabaseStatus = 'disconnected';
   let supabaseError = null;
   let supabaseLatency = 0;
 
-  try {
+  const timeout = (message: string) => new Promise<never>((_, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), 5000);
+    timer.unref?.();
+  });
+
+  const checkDatabase = async () => {
+    if (hasDbError()) {
+      throw new Error('Database initialization failed');
+    }
+
+    const dbStart = Date.now();
+    await Promise.race([
+      db.execute(sql`SELECT 1`),
+      timeout('Database query timeout'),
+    ]);
+    return Date.now() - dbStart;
+  };
+
+  const checkSupabase = async () => {
     if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
+      return null;
+    }
+
+    const supabaseStart = Date.now();
+    const supabase = getSupabaseAdmin();
+    await Promise.race([
+      supabase.storage.listBuckets(),
+      timeout('Supabase query timeout'),
+    ]);
+    return Date.now() - supabaseStart;
+  };
+
+  const [databaseResult, supabaseResult] = await Promise.allSettled([
+    checkDatabase(),
+    checkSupabase(),
+  ]);
+
+  if (databaseResult.status === 'fulfilled') {
+    dbLatency = databaseResult.value;
+    dbStatus = 'connected';
+  } else {
+    dbError = databaseResult.reason instanceof Error ? databaseResult.reason.message : 'Unknown database error';
+  }
+
+  if (supabaseResult.status === 'fulfilled') {
+    if (supabaseResult.value === null) {
       supabaseStatus = 'not-configured';
     } else {
-      const supabaseStart = Date.now();
-      const supabase = getSupabaseAdmin();
-      // Test storage bucket access
-      await supabase.storage.listBuckets();
-      supabaseLatency = Date.now() - supabaseStart;
+      supabaseLatency = supabaseResult.value;
       supabaseStatus = 'connected';
     }
-  } catch (error) {
-    supabaseStatus = 'disconnected';
-    supabaseError = error instanceof Error ? error.message : 'Unknown Supabase error';
+  } else {
+    supabaseError = supabaseResult.reason instanceof Error ? supabaseResult.reason.message : 'Unknown Supabase error';
   }
 
   const responseTime = Date.now() - startTime;

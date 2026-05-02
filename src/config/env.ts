@@ -15,15 +15,15 @@ const getEnv = (key: string, defaultValue?: string): string => {
   return value;
 };
 
-const isDevelopment = process.env.NODE_ENV === 'development';
 const nodeEnv = process.env.NODE_ENV ?? 'development';
+const isDevelopment = nodeEnv === 'development';
 
 const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
   if (value === undefined) return defaultValue;
   return value.toLowerCase() === 'true';
 };
 
-const databaseUrl = process.env.DATABASE_URL || (isDevelopment ? 'postgresql://postgres:password@localhost:5432/nirmaya_db' : '');
+const databaseUrl = process.env.DATABASE_URL ?? '';
 
 // Ensure SSL mode is set for Supabase connections (critical for Vercel)
 // NOTE: Don't append sslmode to URL - the Pool config handles SSL via ssl object
@@ -40,7 +40,7 @@ const isSupabaseConnection = /supabase\.com/i.test(databaseUrl);
 export const env = {
   nodeEnv,
   port: Number(process.env.PORT ?? 3000),
-  jwtSecret: isDevelopment ? 'dev-jwt-secret-only-for-local-testing' : (getEnv('JWT_SECRET') || 'MISSING_JWT_SECRET'),
+  jwtSecret: getEnv('JWT_SECRET') || 'MISSING_JWT_SECRET',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   databaseUrl: ensureSslMode(databaseUrl) || 'MISSING_DATABASE_URL',
   databaseDirectUrl: databaseDirectUrl || 'MISSING_DATABASE_URL',
