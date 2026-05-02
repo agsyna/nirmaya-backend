@@ -26,6 +26,13 @@ app.use(express.json({ limit: '1mb' }));
 const morganFormat = env.nodeEnv === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat));
 
+// Request timeout middleware - CRITICAL for Vercel serverless (25s timeout, 5s buffer before 30s maxDuration)
+app.use((req, res, next) => {
+  req.setTimeout(25000);
+  res.setTimeout(25000);
+  next();
+});
+
 // Check for critical missing environment variables before processing requests
 app.use((_req, res, next): void => {
   if (env.isProduction) {
