@@ -21,7 +21,7 @@ function ensurePool() {
       connectionString: env.databaseUrl,
       max: 1,                      // Must be 1 for pgbouncer
       min: 0,
-      idleTimeoutMillis: 0,        // ← CHANGED: let pgbouncer manage lifecycle
+      idleTimeoutMillis: 10000,    // 10 seconds idle before close
       connectionTimeoutMillis: 8000,
       statement_timeout: 9000,
       query_timeout: 9000,
