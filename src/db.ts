@@ -22,7 +22,7 @@ function ensurePool() {
     return;
   }
 
-  console.log('[DB] Creating pool...');
+  console.log('[DB] Creating pool with connectionString:', env.databaseUrl.substring(0, 50) + '...');
 
   try {
     const useSsl = env.dbSslEnabled || env.isProduction; // Force SSL in production
@@ -36,7 +36,6 @@ function ensurePool() {
       statement_timeout: 8000, // 8s per query
       query_timeout: 8000,
       application_name: 'nirmaya_backend',
-      keepAlive: true, // Keep connections alive for pooler
       ssl: useSsl ? { rejectUnauthorized: false } : false,
     });
 
@@ -45,9 +44,12 @@ function ensurePool() {
       dbError = err;
     });
 
-    // Handle connection timeout
     pool.on('connect', () => {
       console.log('[DB] Connection established');
+    });
+
+    pool.on('acquire', () => {
+      console.log('[DB] Connection acquired from pool');
     });
 
     dbInstance = drizzle(pool, { schema });
