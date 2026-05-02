@@ -10,7 +10,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "runtime": "@vercel/node",
+      "runtime": "nodejs18.x",
       "maxDuration": 30,
       "memory": 1024
     }
