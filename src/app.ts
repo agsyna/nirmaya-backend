@@ -24,16 +24,14 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 
-// Serverless cleanup middleware - ensure db pool closes after each request
+// Serverless cleanup middleware - cleanup db pool after response is fully sent
 app.use((_req, res, next) => {
-  const originalSend = res.send;
-  res.send = function(data) {
-    // After response is sent, cleanup database connections in serverless
+  res.on('finish', () => {
+    // Clean up database pool after response is sent (for Vercel serverless)
     if (env.isProduction && (global as any).__dbCleanup) {
       void (global as any).__dbCleanup();
     }
-    return originalSend.call(this, data);
-  };
+  });
   next();
 });
 
