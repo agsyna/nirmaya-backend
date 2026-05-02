@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { and, eq, sql, count } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { asyncHandler } from '../utils/asyncHandler';
 import { registerDoctor } from '../services/auth.service';
 import { db } from '../db';
