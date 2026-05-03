@@ -217,7 +217,7 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
     throw new AppError(404, 'Patient profile not found');
   }
 
-  const sos = await getEmergencySosById(sosId);
+  const sos = await getEmergencySosById(sosId, patient.patientId);
 
   // Fetch affected patient profile and health data
   const affectedPatient = await getPatientProfile(sos.affectedPatientId);

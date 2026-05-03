@@ -14,6 +14,8 @@ type RegisterPatientInput = {
   age?: number;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   bloodGroup?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+  height?: number; // stored in patients table (cm)
+  weight?: number; // stored in patients table (kg)
   allergies?: Array<{
     name: string;
     severity: 'mild' | 'moderate' | 'severe';
@@ -90,6 +92,9 @@ export const registerPatient = async (input: RegisterPatientInput) => {
       .values({
         userId: user.userId,
         bloodGroup: input.bloodGroup,
+        // Store baseline height/weight provided at onboarding
+        height: input.height !== undefined ? String(input.height) : undefined,
+        weight: input.weight !== undefined ? String(input.weight) : undefined,
       })
       .returning();
 

@@ -40,12 +40,6 @@ import {
   uploadFileDirectController,
 } from '../controllers/upload.controller';
 
-// Access logs controllers
-import {
-  getAccessLogsController,
-  createAccessLogController,
-  updateAccessLogController,
-} from '../controllers/accessLogs.controller';
 
 // Access Requests controllers
 import {
@@ -374,68 +368,6 @@ patientRouter.delete('/prescriptions/:prescriptionId', deletePrescriptionControl
  */
 patientRouter.get('/audit-logs', getAuditLogsController);
 
-// ==================
-// ACCESS LOGS
-// ==================
-
-/**
- * @swagger
- * /api/v1/patient/access-logs:
- *   get:
- *     summary: Get access logs
- *     description: Retrieve all access logs for the patient's data
- *     tags:
- *       - Audit & Security
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: id
- *         schema:
- *           type: string
- *         description: Get specific access log record
- *     responses:
- *       200:
- *         description: Access logs retrieved successfully
- *       401:
- *         description: Unauthorized
- *   post:
- *     summary: Create access log
- *     description: Create a new access log record
- *     tags:
- *       - Audit & Security
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       201:
- *         description: Access log created successfully
- */
-patientRouter.get('/access-logs', getAccessLogsController);
-patientRouter.post('/access-logs', createAccessLogController);
-
-/**
- * @swagger
- * /api/v1/patient/access-logs/{accessLogId}:
- *   put:
- *     summary: Update access log
- *     description: Update an existing access log record
- *     tags:
- *       - Audit & Security
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: accessLogId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Access log updated successfully
- *       404:
- *         description: Access log not found
- */
-patientRouter.put('/access-logs/:accessLogId', updateAccessLogController);
 
 // ==================
 // EMERGENCY SOS

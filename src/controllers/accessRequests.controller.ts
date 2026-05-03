@@ -18,8 +18,8 @@ import {
   updateAccessRequestSchema,
 } from '../validators/accessRequests';
 import { db } from '../db';
-import { users, patients, shareTokens } from '../schema';
-import { eq } from 'drizzle-orm';
+import { users, patients, shareTokens, doctors } from '../schema';
+import { eq, inArray } from 'drizzle-orm';
 
 // Doctor requests access
 export const createAccessRequestController = asyncHandler(async (request: Request, response: Response) => {
@@ -60,7 +60,7 @@ export const createAccessRequestController = asyncHandler(async (request: Reques
   });
 });
 
-// Doctor fetches history
+// Doctor fetches history — batch queries, no N+1
 export const getDoctorAccessRequestsController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
   if (!userId || request.auth?.role !== 'doctor') {
@@ -72,35 +72,32 @@ export const getDoctorAccessRequestsController = asyncHandler(async (request: Re
 
   const requests = await getAccessRequestsByDoctor(doctor.doctorId);
 
-  // Map patient names
-  const patientIds = [...new Set(requests.map(r => r.patientId))];
-  const patientNamesMap: Record<string, string> = {};
-  if (patientIds.length > 0) {
-    for (const pId of patientIds) {
-      const [p] = await db
-        .select({ name: users.name })
-        .from(patients)
-        .innerJoin(users, eq(patients.userId, users.userId))
-        .where(eq(patients.patientId, pId))
-        .limit(1);
-      if (p) patientNamesMap[pId] = p.name;
-    }
+  if (requests.length === 0) {
+    response.status(200).json({ status: 'success', data: [] });
+    return;
   }
 
-  // Map tokens
+  // Batch: fetch all patient names in one query
+  const patientIds = [...new Set(requests.map(r => r.patientId))];
+  const patientRows = await db
+    .select({ patientId: patients.patientId, name: users.name })
+    .from(patients)
+    .innerJoin(users, eq(patients.userId, users.userId))
+    .where(inArray(patients.patientId, patientIds));
+  const patientNamesMap: Record<string, string> = {};
+  for (const row of patientRows) patientNamesMap[row.patientId] = row.name;
+
+  // Batch: fetch all share token plaintext tokens in one query
   const shareTokenIds = requests.map(r => r.shareTokenId).filter(Boolean) as string[];
   const tokensMap: Record<string, string> = {};
-  
   if (shareTokenIds.length > 0) {
-    for (const stId of shareTokenIds) {
-      const [st] = await db
-        .select({ metadata: shareTokens.metadata })
-        .from(shareTokens)
-        .where(eq(shareTokens.tokenId, stId))
-        .limit(1);
-      
-      if (st?.metadata && typeof st.metadata === 'object' && 'token' in st.metadata) {
-        tokensMap[stId] = (st.metadata as any).token as string;
+    const tokenRows = await db
+      .select({ tokenId: shareTokens.tokenId, metadata: shareTokens.metadata })
+      .from(shareTokens)
+      .where(inArray(shareTokens.tokenId, shareTokenIds));
+    for (const row of tokenRows) {
+      if (row.metadata && typeof row.metadata === 'object' && 'token' in row.metadata) {
+        tokensMap[row.tokenId] = (row.metadata as any).token as string;
       }
     }
   }
@@ -119,7 +116,7 @@ export const getDoctorAccessRequestsController = asyncHandler(async (request: Re
   });
 });
 
-// Patient fetches all requests
+// Patient fetches all requests — batch queries, no N+1
 export const getPatientAccessRequestsController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
   if (!userId || request.auth?.role !== 'patient') {
@@ -131,12 +128,25 @@ export const getPatientAccessRequestsController = asyncHandler(async (request: R
 
   const requests = await getAccessRequestsByPatient(patient.patientId);
 
-  // Map doctor names
+  if (requests.length === 0) {
+    response.status(200).json({ status: 'success', data: [] });
+    return;
+  }
+
+  // Batch: fetch all doctor info in one query
   const doctorIds = [...new Set(requests.map(r => r.doctorId))];
-  const doctorsMap: Record<string, any> = {};
-  for (const dId of doctorIds) {
-    const dData = await getDoctorWithUser(dId);
-    if (dData) doctorsMap[dId] = { name: dData.user.name, specialization: dData.doctor.specialization };
+  const doctorRows = await db
+    .select({
+      doctorId: doctors.doctorId,
+      name: users.name,
+      specialization: doctors.specialization,
+    })
+    .from(doctors)
+    .innerJoin(users, eq(doctors.userId, users.userId))
+    .where(inArray(doctors.doctorId, doctorIds));
+  const doctorsMap: Record<string, { name: string; specialization: string }> = {};
+  for (const row of doctorRows) {
+    doctorsMap[row.doctorId] = { name: row.name, specialization: row.specialization };
   }
 
   response.status(200).json({
@@ -245,7 +255,7 @@ export const updateAccessRequestController = asyncHandler(async (request: Reques
     expiresAt.setMinutes(expiresAt.getMinutes() + validated.expiresInMinutes);
   }
 
-  // Generate new share token and revoke the old one, or handle logic
+  // Revoke old token, issue a new one
   if (accessReq.shareTokenId) {
     await revokeShareToken(accessReq.shareTokenId, patient.patientId, userId);
   }

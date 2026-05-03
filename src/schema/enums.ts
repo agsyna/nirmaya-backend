@@ -64,12 +64,8 @@ export const reminderFrequencyEnum = pgEnum('reminder_frequency', ['once', 'dail
 
 export const reminderStatusEnum = pgEnum('reminder_status', ['pending', 'completed', 'missed']);
 
-export const shareTokenScopeEnum = pgEnum('share_token_scope', [
-  'prescriptions',
-  'reports',
-  'vaccinations',
-  'all',
-]);
+// share_tokens.scope is stored as JSONB — valid values: prescriptions, reports, health_data, vaccinations
+// No DB enum is used for this column.
 
 export const shareTokenStatusEnum = pgEnum('share_token_status', ['active', 'revoked', 'expired']);
 

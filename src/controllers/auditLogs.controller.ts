@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/appError';
 import {
   getAuditLogsByPatient,
+  getAuditLogsByPatientTotal,
   getAuditLogById,
 } from '../repositories/auditLogs.repository';
 import { getPatientByUserId } from '../repositories/patient.repository';
@@ -10,8 +11,8 @@ import { getPatientByUserId } from '../repositories/patient.repository';
 /**
  * GET /audit-logs
  * GET /audit-logs?id={auditId}
- * 
- * Returns list of all audit logs, or a specific audit log entry if id is provided
+ *
+ * Returns list of all audit logs with the accessor's name, or a specific entry if id is provided.
  */
 export const getAuditLogsController = asyncHandler(async (request: Request, response: Response) => {
   const userId = request.auth?.userId;
@@ -34,7 +35,7 @@ export const getAuditLogsController = asyncHandler(async (request: Request, resp
     throw new AppError(404, 'Patient profile not found');
   }
 
-  // Check if specific audit log ID is requested
+  // Return single entry if specific ID requested
   if (auditId) {
     const auditLog = await getAuditLogById(auditId, patient.patientId);
 
@@ -46,6 +47,7 @@ export const getAuditLogsController = asyncHandler(async (request: Request, resp
         status: auditLog.status,
         timestamp: auditLog.timestamp,
         accessedByUserId: auditLog.accessedByUserId,
+        accessedByUserName: auditLog.accessedByUserName,
         accessedRecordId: auditLog.accessedRecordId,
         ipAddress: auditLog.ipAddress,
         userAgent: auditLog.userAgent,
@@ -56,29 +58,32 @@ export const getAuditLogsController = asyncHandler(async (request: Request, resp
     return;
   }
 
-  // Get all audit logs with pagination
-  const auditLogs = await getAuditLogsByPatient(patient.patientId, 1000);
-  const paginatedLogs = auditLogs.slice(offset, offset + limit);
+  // Paginated list — DB-level limit+offset (not in-memory slice)
+  const [logs, total] = await Promise.all([
+    getAuditLogsByPatient(patient.patientId, limit, offset),
+    getAuditLogsByPatientTotal(patient.patientId),
+  ]);
 
   response.status(200).json({
     status: 'success',
-    data: paginatedLogs.map((log: any) => ({
+    data: logs.map((log: any) => ({
       auditId: log.auditId,
-      action: log.action, // view, download, print, share
-      status: log.status, // success, failed
+      action: log.action,
+      status: log.status,
       timestamp: log.timestamp,
       accessedByUserId: log.accessedByUserId,
+      accessedByUserName: log.accessedByUserName, // doctor's real name
       accessedRecordId: log.accessedRecordId,
       ipAddress: log.ipAddress,
       errorMessage: log.errorMessage,
       metadata: log.metadata,
     })),
     meta: {
-      count: paginatedLogs.length,
-      total: auditLogs.length,
+      count: logs.length,
+      total,
       limit,
       offset,
-      hasMore: offset + paginatedLogs.length < auditLogs.length,
+      hasMore: offset + logs.length < total,
     },
   });
 });

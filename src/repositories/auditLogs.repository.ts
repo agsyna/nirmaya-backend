@@ -1,6 +1,6 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { auditLogs } from '../schema';
+import { auditLogs, users } from '../schema';
 import { AppError } from '../utils/appError';
 
 /**
@@ -8,20 +8,59 @@ import { AppError } from '../utils/appError';
  * Handles all database queries related to audit logs tracking data access
  */
 
-export const getAuditLogsByPatient = async (patientId: string, limit: number = 50) => {
+export const getAuditLogsByPatient = async (patientId: string, limit: number = 50, offset: number = 0) => {
   const logs = await db
-    .select()
+    .select({
+      auditId: auditLogs.auditId,
+      shareTokenId: auditLogs.shareTokenId,
+      patientId: auditLogs.patientId,
+      accessedByUserId: auditLogs.accessedByUserId,
+      accessedByUserName: users.name,         // joined from users table
+      accessedRecordId: auditLogs.accessedRecordId,
+      ipAddress: auditLogs.ipAddress,
+      userAgent: auditLogs.userAgent,
+      action: auditLogs.action,
+      status: auditLogs.status,
+      errorMessage: auditLogs.errorMessage,
+      metadata: auditLogs.metadata,
+      timestamp: auditLogs.timestamp,
+    })
     .from(auditLogs)
+    .innerJoin(users, eq(auditLogs.accessedByUserId, users.userId))
     .where(eq(auditLogs.patientId, patientId))
     .orderBy(desc(auditLogs.timestamp))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
   return logs;
+};
+
+export const getAuditLogsByPatientTotal = async (patientId: string): Promise<number> => {
+  const result = await db
+    .select({ auditId: auditLogs.auditId })
+    .from(auditLogs)
+    .where(eq(auditLogs.patientId, patientId));
+  return result.length;
 };
 
 export const getAuditLogById = async (auditId: string, patientId: string) => {
   const [log] = await db
-    .select()
+    .select({
+      auditId: auditLogs.auditId,
+      shareTokenId: auditLogs.shareTokenId,
+      patientId: auditLogs.patientId,
+      accessedByUserId: auditLogs.accessedByUserId,
+      accessedByUserName: users.name,
+      accessedRecordId: auditLogs.accessedRecordId,
+      ipAddress: auditLogs.ipAddress,
+      userAgent: auditLogs.userAgent,
+      action: auditLogs.action,
+      status: auditLogs.status,
+      errorMessage: auditLogs.errorMessage,
+      metadata: auditLogs.metadata,
+      timestamp: auditLogs.timestamp,
+    })
     .from(auditLogs)
+    .innerJoin(users, eq(auditLogs.accessedByUserId, users.userId))
     .where(
       and(
         eq(auditLogs.auditId, auditId),

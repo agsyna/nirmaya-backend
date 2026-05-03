@@ -266,17 +266,7 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
     }));
   }
 
-  response.status(200).json({
-    status: 'success',
-    data: dataResponse,
-    meta: {
-      scope: scope,
-      accessedAt: new Date(),
-      remainingAccesses: request.shareToken.maxAccesses === -1 ? 'unlimited' : request.shareToken.maxAccesses - request.shareToken.currentAccesses - 1,
-    },
-  });
-
-  // Log access
+  // Log access BEFORE sending response so it's never silently dropped
   if (request.shareToken.doctorId) {
     const [accessReq] = await db
       .select()
@@ -299,4 +289,14 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
       console.error('Failed to log access:', err);
     }
   }
+
+  response.status(200).json({
+    status: 'success',
+    data: dataResponse,
+    meta: {
+      scope: scope,
+      accessedAt: new Date(),
+      remainingAccesses: request.shareToken.maxAccesses === -1 ? 'unlimited' : request.shareToken.maxAccesses - request.shareToken.currentAccesses - 1,
+    },
+  });
 });

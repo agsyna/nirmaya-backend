@@ -55,7 +55,12 @@ export const getActiveAccessRequestForDoctor = async (patientId: string, doctorI
 
 export const updateAccessRequest = async (
   id: string,
-  data: Partial<AccessRequest>
+  data: {
+    status?: 'pending' | 'approved' | 'rejected' | 'expired' | 'revoked';
+    approvedScope?: string[];
+    shareTokenId?: string | null;
+    expiresAt?: Date;
+  }
 ) => {
   const [result] = await db
     .update(accessRequests)
