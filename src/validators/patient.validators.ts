@@ -31,8 +31,8 @@ export const updateMedicalRecordSchema = z.object({
 // Emergency SOS validators
 export const createEmergencySosSchema = z.object({
   affectedPatientId: z.string().uuid(),
-  latitude: z.string().optional(),
-  longitude: z.string().optional(),
+  latitude: z.coerce.string().optional(),
+  longitude: z.coerce.string().optional(),
   serviceTypes: z.array(z.enum(['ambulance', 'police', 'fire', 'medical-support', 'other'])).min(1),
   description: z.string().max(500).optional(),
 });
