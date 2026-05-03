@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 import { patients } from './patients';
 
 export const nominees = pgTable('nominees', {
@@ -8,6 +8,7 @@ export const nominees = pgTable('nominees', {
     .references(() => patients.patientId, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   email: text('email').notNull(),
+  phone: varchar('phone', { length: 20 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

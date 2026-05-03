@@ -34,6 +34,7 @@ export const getNomineesController = asyncHandler(async (request: Request, respo
       nomineeId: n.nomineeId,
       name: n.name,
       email: n.email,
+      phone: n.phone ?? null,
       createdAt: n.createdAt,
       updatedAt: n.updatedAt,
     })),
@@ -60,12 +61,13 @@ export const createNomineeController = asyncHandler(async (request: Request, res
     throw new AppError(404, 'Patient profile not found');
   }
 
-  const { name, email } = request.body as { name: string; email: string };
+  const { name, email, phone } = request.body as { name: string; email: string; phone?: string };
 
   const nominee = await createNominee({
     patientId: patient.patientId,
     name,
     email,
+    phone,
   });
 
   response.status(201).json({
@@ -74,6 +76,7 @@ export const createNomineeController = asyncHandler(async (request: Request, res
       nomineeId: nominee.nomineeId,
       name: nominee.name,
       email: nominee.email,
+      phone: nominee.phone ?? null,
       createdAt: nominee.createdAt,
       updatedAt: nominee.updatedAt,
     },
@@ -110,9 +113,9 @@ export const updateNomineeController = asyncHandler(async (request: Request, res
     throw new AppError(403, 'You do not have permission to update this nominee');
   }
 
-  const { name, email } = request.body as { name?: string; email?: string };
+  const { name, email, phone } = request.body as { name?: string; email?: string; phone?: string };
 
-  const updated = await updateNominee(id, { name, email });
+  const updated = await updateNominee(id, { name, email, phone });
 
   response.status(200).json({
     status: 'success',
@@ -120,6 +123,7 @@ export const updateNomineeController = asyncHandler(async (request: Request, res
       nomineeId: updated!.nomineeId,
       name: updated!.name,
       email: updated!.email,
+      phone: updated!.phone ?? null,
       createdAt: updated!.createdAt,
       updatedAt: updated!.updatedAt,
     },

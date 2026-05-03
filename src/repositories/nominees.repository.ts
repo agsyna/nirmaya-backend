@@ -32,7 +32,7 @@ export const createNominee = async (data: NewNominee) => {
 
 export const updateNominee = async (
   nomineeId: string,
-  data: Partial<Pick<NewNominee, 'name' | 'email'>>
+  data: Partial<Pick<NewNominee, 'name' | 'email' | 'phone'>>
 ) => {
   const [nominee] = await db
     .update(nominees)

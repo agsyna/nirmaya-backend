@@ -70,13 +70,15 @@ export const auditLogQuerySchema = z.object({
 export const createNomineeSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   email: z.string().email('Invalid email address'),
+  phone: z.string().max(20).optional(),
 });
 
 export const updateNomineeSchema = z
   .object({
     name: z.string().min(1).max(255).optional(),
     email: z.string().email('Invalid email address').optional(),
+    phone: z.string().max(20).optional(),
   })
-  .refine((data) => data.name !== undefined || data.email !== undefined, {
-    message: 'At least one of name or email must be provided',
+  .refine((data) => data.name !== undefined || data.email !== undefined || data.phone !== undefined, {
+    message: 'At least one of name, email, or phone must be provided',
   });

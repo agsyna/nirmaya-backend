@@ -14,6 +14,7 @@ import {
   getPatientChronicConditions,
   getPatientHealthData,
 } from '../repositories/patient.repository';
+import { getNomineesByPatientId } from '../repositories/nominees.repository';
 import { createEmergencySosSchema, updateEmergencySosSchema } from '../validators/patient.validators';
 
 /**
@@ -43,10 +44,11 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
   }
 
   // Fetch critical health information for the affected patient
-  const [allergies, chronicConditions, healthDataRecords] = await Promise.all([
+  const [allergies, chronicConditions, healthDataRecords, nominees] = await Promise.all([
     getPatientAllergies(affectedPatient.patientId),
     getPatientChronicConditions(affectedPatient.patientId),
     getPatientHealthData(affectedPatient.patientId, 1),
+    getNomineesByPatientId(affectedPatient.patientId),
   ]);
 
   const criticalInfo = {
@@ -67,6 +69,12 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
       notes: cc.notes,
     })),
     latestHealthData: healthDataRecords[0] || null,
+    nominees: nominees.map((n: any) => ({
+      nomineeId: n.nomineeId,
+      name: n.name,
+      email: n.email,
+      phone: n.phone ?? null,
+    })),
   };
 
   const sos = await createEmergencySos({
@@ -97,6 +105,12 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
         height: affectedPatient.height,
         weight: affectedPatient.weight,
       },
+      nominees: nominees.map((n: any) => ({
+        nomineeId: n.nomineeId,
+        name: n.name,
+        email: n.email,
+        phone: n.phone ?? null,
+      })),
       criticalInfoShared: criticalInfo,
       createdAt: sos.createdAt,
       message: 'Emergency SOS activated.',
@@ -226,7 +240,10 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
     throw new AppError(404, 'Affected patient profile not found');
   }
 
-  const healthDataRecords = await getPatientHealthData(affectedPatient.patientId, 1);
+  const [healthDataRecords, nominees] = await Promise.all([
+    getPatientHealthData(affectedPatient.patientId, 1),
+    getNomineesByPatientId(affectedPatient.patientId),
+  ]);
 
   response.status(200).json({
     status: 'success',
@@ -244,6 +261,12 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
         height: affectedPatient.height,
         weight: affectedPatient.weight,
       },
+      nominees: nominees.map((n: any) => ({
+        nomineeId: n.nomineeId,
+        name: n.name,
+        email: n.email,
+        phone: n.phone ?? null,
+      })),
       latestHealthData: healthDataRecords[0] || null,
       criticalInfoShared: sos.criticalInfoShared,
       createdAt: sos.createdAt,
