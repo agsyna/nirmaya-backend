@@ -215,6 +215,8 @@ export const login = async (email: string, passwordValue: string) => {
 
   // Fetch patient data if user is a patient
   let patientData = null;
+  let doctorData = null;
+  
   if (user.type === 'patient') {
     const [patient] = await db.select().from(patients).where(eq(patients.userId, user.userId)).limit(1);
     if (patient) {
@@ -224,6 +226,17 @@ export const login = async (email: string, passwordValue: string) => {
         height: patient.height,
         weight: patient.weight,
         emergencySosEnabled: patient.emergencySosEnabled,
+      };
+    }
+  } else if (user.type === 'doctor') {
+    const [doctor] = await db.select().from(doctors).where(eq(doctors.userId, user.userId)).limit(1);
+    if (doctor) {
+      doctorData = {
+        doctorId: doctor.doctorId,
+        licenseNumber: doctor.licenseNumber,
+        specialization: doctor.specialization,
+        bio: doctor.bio,
+        verified: doctor.verified,
       };
     }
   }
@@ -239,11 +252,12 @@ export const login = async (email: string, passwordValue: string) => {
       phone: user.phone,
       type: user.type,
     },
-    patient: patientData,
+    ...(patientData ? { patient: patientData } : {}),
+    ...(doctorData ? { doctor: doctorData } : {}),
     qrCode: patientData ? {
       code: `https://health-app.com/qr/${patientData.patientId}`, // Placeholder - can be replaced with actual QR code generation
       generatedAt: new Date(),
-    } : null,
+    } : undefined,
     token,
   };
 };

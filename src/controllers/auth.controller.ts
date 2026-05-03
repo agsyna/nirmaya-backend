@@ -4,12 +4,12 @@ import { forgotPassword, login, registerPatient, resetPassword } from '../servic
 
 export const registerPatientController = asyncHandler(async (request: Request, response: Response) => {
   const result = await registerPatient(request.body);
-  response.status(201).json(result);
+  response.status(201).json({ status: 'success', data: result });
 });
 
 export const loginController = asyncHandler(async (request: Request, response: Response) => {
   const result = await login(request.body.email, request.body.password);
-  response.status(200).json(result);
+  response.status(200).json({ status: 'success', data: result });
 });
 
 export const forgotPasswordController = asyncHandler(async (request: Request, response: Response) => {
@@ -23,5 +23,5 @@ export const forgotPasswordController = asyncHandler(async (request: Request, re
 
 export const resetPasswordController = asyncHandler(async (request: Request, response: Response) => {
   const result = await resetPassword(request.body.token, request.body.password);
-  response.status(200).json(result);
+  response.status(200).json({ status: 'success', data: result });
 });
