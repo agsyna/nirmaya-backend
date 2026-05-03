@@ -47,6 +47,15 @@ import {
   updateAccessLogController,
 } from '../controllers/accessLogs.controller';
 
+// Access Requests controllers
+import {
+  getPatientAccessRequestsController,
+  approveAccessRequestController,
+  rejectAccessRequestController,
+  updateAccessRequestController,
+  revokeAccessRequestController,
+} from '../controllers/accessRequests.controller';
+
 // Validators
 import {
   healthDataSchema,
@@ -131,6 +140,16 @@ patientRouter.get('/health', getUserHealthController);
  *         description: Invalid input
  */
 patientRouter.post('/health', validateBody(healthDataSchema), createUserHealthRecordController);
+
+// ==================
+// ACCESS REQUESTS
+// ==================
+
+patientRouter.get('/access-requests', getPatientAccessRequestsController);
+patientRouter.post('/access-requests/:id/approve', approveAccessRequestController);
+patientRouter.post('/access-requests/:id/reject', rejectAccessRequestController);
+patientRouter.post('/access-requests/:id/update', updateAccessRequestController);
+patientRouter.post('/access-requests/:id/revoke', revokeAccessRequestController);
 
 // ==================
 // MEDICAL RECORDS - REPORTS

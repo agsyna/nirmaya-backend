@@ -31,3 +31,4 @@ export * from './emergencySos';
 export * from './relations';
 
 export * from './notifications';
+export * from './accessRequests';

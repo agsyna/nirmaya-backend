@@ -12,7 +12,11 @@ import { getMedicalRecordsByPatientAndType } from '../repositories/medicalRecord
 import { generateQRCode } from '../lib/qrcode';
 import { env } from '../config/env';
 import type { HealthData, Allergy, ChronicCondition } from '../schema';
+import { accessRequests } from '../schema';
 import { z } from 'zod';
+import { createAuditLog } from '../repositories/auditLogs.repository';
+import { db } from '../db';
+import { eq } from 'drizzle-orm';
 
 const createShareTokenSchema = z.object({
   doctorId: z.string().uuid().optional(),
@@ -260,4 +264,28 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
       remainingAccesses: request.shareToken.maxAccesses === -1 ? 'unlimited' : request.shareToken.maxAccesses - request.shareToken.currentAccesses - 1,
     },
   });
+
+  // Log access
+  if (request.shareToken.doctorId) {
+    const [accessReq] = await db
+      .select()
+      .from(accessRequests)
+      .where(eq(accessRequests.shareTokenId, request.shareToken.tokenId))
+      .limit(1);
+
+    try {
+      await createAuditLog({
+        shareTokenId: request.shareToken.tokenId,
+        patientId,
+        accessedByUserId: request.shareToken.doctorId,
+        action: 'view',
+        metadata: {
+          requestId: accessReq?.id,
+          scope,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to log access:', err);
+    }
+  }
 });

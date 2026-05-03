@@ -858,6 +858,66 @@ Lock frontend successful uploads to system DB integration mappings natively stru
   }
 }
 ```
+
+### Access Requests
+
+#### `GET /patient/access-requests`
+Fetch all doctor access requests (pending, approved, rejected, expired, revoked).
+
+**Response Object**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "requestId": "uuid",
+      "doctorInfo": {
+        "name": "Dr. Gregory House",
+        "specialization": "general_medicine"
+      },
+      "status": "pending",
+      "approvedScope": null,
+      "expiresAt": null,
+      "createdAt": "2026-05-03T11:00:00Z"
+    }
+  ]
+}
+```
+
+#### `POST /patient/access-requests/:id/approve`
+Approve a pending access request to grant a doctor programmatic share token access.
+
+**Request Body**:
+```json
+{
+  "scope": ["reports", "health_data"],
+  "expiresInMinutes": 60
+}
+```
+
+**Response Object**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "uuid",
+    "status": "approved",
+    "approvedScope": ["reports", "health_data"],
+    "shareTokenId": "uuid",
+    "expiresAt": "2026-05-03T12:00:00Z"
+  }
+}
+```
+
+#### `POST /patient/access-requests/:id/reject`
+Reject a pending access request.
+
+#### `POST /patient/access-requests/:id/update`
+Update an approved access request scope or duration (regenerates share token).
+
+#### `POST /patient/access-requests/:id/revoke`
+Revoke an approved access request, disabling the underlying share token.
+
 ---
 
 ## Admin Subsystem (`/api/v1/admin`)
@@ -978,7 +1038,56 @@ Critical deletion handling permanently restricting account existence.
 ```
 ---
 
+## Doctor Endpoints (`/api/v1/doctor`)
+
+*Strictly enforces `authenticate` AND `requireDoctor` custom middlewares.*
+
+### `POST /doctor/access-request`
+Request programmatic access to a patient's records using their scanned `patientId`.
+
+**Request Body**:
+```json
+{
+  "patientId": "uuid"
+}
+```
+
+**Response Object**:
+```json
+{
+  "status": "success",
+  "data": {
+    "requestId": "uuid",
+    "status": "pending",
+    "patientName": "Jane Example"
+  }
+}
+```
+
+### `GET /doctor/access-requests`
+Fetch history of all access requests made by this doctor.
+
+**Response Object**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "requestId": "uuid",
+      "patientName": "Jane Example",
+      "status": "approved",
+      "createdAt": "2026-05-03T11:00:00Z",
+      "expiresAt": "2026-05-03T12:00:00Z",
+      "approvedScope": ["reports"]
+    }
+  ]
+}
+```
+
+---
+
 ## Secure Public Viewing Engine (`/api/v1/share`)
+
 
 #### `POST /share/:token/access`
 Allow programmatic third parties natively verified validation across specific tokens accessing isolated payloads mapped tightly exclusively to scopes allocated independently locally natively structured securely inside Token middleware evaluations correctly.

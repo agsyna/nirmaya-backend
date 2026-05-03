@@ -13,6 +13,7 @@ import { shareTokens } from './shareTokens';
 import { auditLogs } from './auditLogs';
 import { emergencyContacts } from './emergencyContacts';
 import { emergencySos } from './emergencySos';
+import { accessRequests } from './accessRequests';
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   admin: one(admins, { fields: [users.userId], references: [admins.userId] }),
@@ -26,8 +27,9 @@ export const adminsRelations = relations(admins, ({ one }) => ({
   user: one(users, { fields: [admins.userId], references: [users.userId] }),
 }));
 
-export const doctorsRelations = relations(doctors, ({ one }) => ({
+export const doctorsRelations = relations(doctors, ({ one, many }) => ({
   user: one(users, { fields: [doctors.userId], references: [users.userId] }),
+  accessRequests: many(accessRequests),
 }));
 
 export const patientsRelations = relations(patients, ({ one, many }) => ({
@@ -42,6 +44,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   auditLogs: many(auditLogs),
   emergencyContacts: many(emergencyContacts),
   emergencySos: many(emergencySos),
+  accessRequests: many(accessRequests),
 }));
 
 export const allergiesRelations = relations(allergies, ({ one }) => ({
@@ -93,4 +96,10 @@ export const emergencyContactsRelations = relations(emergencyContacts, ({ one })
 
 export const emergencySosRelations = relations(emergencySos, ({ one }) => ({
   patient: one(patients, { fields: [emergencySos.patientId], references: [patients.patientId] }),
+}));
+
+export const accessRequestsRelations = relations(accessRequests, ({ one }) => ({
+  patient: one(patients, { fields: [accessRequests.patientId], references: [patients.patientId] }),
+  doctor: one(doctors, { fields: [accessRequests.doctorId], references: [doctors.doctorId] }),
+  shareToken: one(shareTokens, { fields: [accessRequests.shareTokenId], references: [shareTokens.tokenId] }),
 }));

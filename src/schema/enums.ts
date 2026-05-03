@@ -97,3 +97,11 @@ export const emergencyContactRelationshipEnum = pgEnum('emergency_contact_relati
   'caregiver',
   'other',
 ]);
+
+export const accessRequestStatusEnum = pgEnum('access_request_status', [
+  'pending',
+  'approved',
+  'rejected',
+  'expired',
+  'revoked',
+]);
