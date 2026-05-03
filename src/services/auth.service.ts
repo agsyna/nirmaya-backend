@@ -92,9 +92,9 @@ export const registerPatient = async (input: RegisterPatientInput) => {
       .values({
         userId: user.userId,
         bloodGroup: input.bloodGroup,
-        // Store baseline height/weight provided at onboarding
-        height: input.height !== undefined ? String(input.height) : undefined,
-        weight: input.weight !== undefined ? String(input.weight) : undefined,
+        // Store baseline height/weight provided at onboarding (store as numeric)
+        height: input.height !== undefined ? input.height : undefined,
+        weight: input.weight !== undefined ? input.weight : undefined,
       })
       .returning();
 
@@ -144,7 +144,13 @@ export const registerPatient = async (input: RegisterPatientInput) => {
 
   return {
     user: sanitizeUser(created.user),
-    patient: created.patient,
+    patient: created.patient
+      ? {
+          ...created.patient,
+          height: created.patient.height !== null && created.patient.height !== undefined ? Number(created.patient.height) : created.patient.height,
+          weight: created.patient.weight !== null && created.patient.weight !== undefined ? Number(created.patient.weight) : created.patient.weight,
+        }
+      : null,
     token,
   };
 };
@@ -228,8 +234,8 @@ export const login = async (email: string, passwordValue: string) => {
       patientData = {
         patientId: patient.patientId,
         bloodGroup: patient.bloodGroup,
-        height: patient.height,
-        weight: patient.weight,
+        height: patient.height !== null && patient.height !== undefined ? Number(patient.height) : patient.height,
+        weight: patient.weight !== null && patient.weight !== undefined ? Number(patient.weight) : patient.weight,
         emergencySosEnabled: patient.emergencySosEnabled,
       };
     }

@@ -13,7 +13,12 @@ export const getPatientByUserId = async (userId: string) => {
     .from(patients)
     .where(eq(patients.userId, userId))
     .limit(1);
-  return patient;
+  if (!patient) return null;
+  return {
+    ...patient,
+    height: patient.height !== null && patient.height !== undefined ? Number(patient.height) : patient.height,
+    weight: patient.weight !== null && patient.weight !== undefined ? Number(patient.weight) : patient.weight,
+  } as any;
 };
 
 export const getPatientProfile = async (patientId: string) => {
@@ -29,9 +34,11 @@ export const getPatientProfile = async (patientId: string) => {
   const { patients: patientData, users: userData } = result[0];
   return {
     ...patientData,
+    height: patientData.height !== null && patientData.height !== undefined ? Number(patientData.height) : patientData.height,
+    weight: patientData.weight !== null && patientData.weight !== undefined ? Number(patientData.weight) : patientData.weight,
     age: userData.age,
     gender: userData.gender,
-  };
+  } as any;
 };
 
 export const getUserWithPatient = async (userId: string) => {
@@ -47,11 +54,19 @@ export const getUserWithPatient = async (userId: string) => {
     .limit(1);
 
   if (!result || result.length === 0 || !result[0].user) return null;
+  const user = result[0].user;
+  const patient = result[0].patient
+    ? {
+        ...result[0].patient,
+        height: result[0].patient.height !== null && result[0].patient.height !== undefined ? Number(result[0].patient.height) : result[0].patient.height,
+        weight: result[0].patient.weight !== null && result[0].patient.weight !== undefined ? Number(result[0].patient.weight) : result[0].patient.weight,
+      }
+    : null;
 
   return {
-    user: result[0].user,
-    patient: result[0].patient,
-  };
+    user,
+    patient,
+  } as any;
 };
 
 export const getPatientHealthData = async (patientId: string, limit: number = 10) => {
@@ -105,10 +120,10 @@ export const createHealthRecord = async (record: {
     .values({
       patientId: record.patientId,
       bloodPressure: record.bloodPressure,
-      bloodGlucose: record.bloodGlucose ? String(record.bloodGlucose) : undefined,
+      bloodGlucose: record.bloodGlucose !== undefined ? record.bloodGlucose : undefined,
       heartRate: record.heartRate,
-      temperature: record.temperature ? String(record.temperature) : undefined,
-      weight: record.weight ? String(record.weight) : undefined,
+      temperature: record.temperature !== undefined ? record.temperature : undefined,
+      weight: record.weight !== undefined ? record.weight : undefined,
       notes: record.notes,
       recordedAt: record.recordedAt,
     } as any)

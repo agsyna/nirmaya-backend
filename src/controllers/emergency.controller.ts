@@ -48,7 +48,7 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
     getPatientAllergies(affectedPatient.patientId),
     getPatientChronicConditions(affectedPatient.patientId),
     getPatientHealthData(affectedPatient.patientId, 1),
-    getNomineesByPatientId(affectedPatient.patientId),
+    getNomineesByPatientId(affectedPatient.patientId).catch(() => []),
   ]);
 
   const criticalInfo = {
@@ -242,7 +242,7 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
 
   const [healthDataRecords, nominees] = await Promise.all([
     getPatientHealthData(affectedPatient.patientId, 1),
-    getNomineesByPatientId(affectedPatient.patientId),
+    getNomineesByPatientId(affectedPatient.patientId).catch(() => []),
   ]);
 
   response.status(200).json({

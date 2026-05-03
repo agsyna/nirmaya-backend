@@ -1,7 +1,34 @@
-import { eq, and, desc, ne } from 'drizzle-orm';
+import { eq, and, desc, ne, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { accessRequests } from '../schema';
 import type { AccessRequest } from '../schema';
+
+/**
+ * Lazily expire any approved requests whose expiresAt has passed.
+ * Updates the DB in bulk and returns the corrected list.
+ */
+const expireStaleRequests = async (records: AccessRequest[]): Promise<AccessRequest[]> => {
+  const now = new Date();
+  const toExpire = records.filter(
+    (r) => r.status === 'approved' && r.expiresAt && r.expiresAt < now
+  );
+
+  if (toExpire.length > 0) {
+    const ids = toExpire.map((r) => r.id);
+    await db
+      .update(accessRequests)
+      .set({ status: 'expired', updatedAt: now })
+      .where(inArray(accessRequests.id, ids));
+
+    // Patch in-memory objects so the caller gets the correct status immediately
+    const expiredSet = new Set(ids);
+    return records.map((r) =>
+      expiredSet.has(r.id) ? { ...r, status: 'expired' as const, updatedAt: now } : r
+    );
+  }
+
+  return records;
+};
 
 
 export const createAccessRequest = async (data: {
@@ -75,17 +102,21 @@ export const updateAccessRequest = async (
 };
 
 export const getAccessRequestsByPatient = async (patientId: string) => {
-  return db
+  const records = await db
     .select()
     .from(accessRequests)
     .where(eq(accessRequests.patientId, patientId))
     .orderBy(desc(accessRequests.createdAt));
+
+  return expireStaleRequests(records);
 };
 
 export const getAccessRequestsByDoctor = async (doctorId: string) => {
-  return db
+  const records = await db
     .select()
     .from(accessRequests)
     .where(eq(accessRequests.doctorId, doctorId))
     .orderBy(desc(accessRequests.createdAt));
+
+  return expireStaleRequests(records);
 };
