@@ -32,6 +32,8 @@ export const createShareToken = async (data: {
   doctorId?: string; // null for public access
   scope: string[];
   accessLevel: 'public' | 'doctor';
+  accessType: 'anyone' | 'restricted';
+  allowedEmails?: string[];
   maxAccesses?: number;
   expiresAt?: Date;
 }) => {
@@ -46,6 +48,8 @@ export const createShareToken = async (data: {
       tokenHash,
       scope: data.scope,
       accessLevel: data.accessLevel,
+      accessType: data.accessType,
+      allowedEmails: data.allowedEmails || null,
       maxAccesses: data.maxAccesses ?? -1,
       expiresAt: data.expiresAt,
       status: 'active',

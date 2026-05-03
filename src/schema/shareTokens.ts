@@ -12,7 +12,10 @@ export const shareTokens = pgTable('share_tokens', {
   // Token recipient - null means public/any doctor can access
   doctorId: uuid('doctor_id')
     .references(() => users.userId, { onDelete: 'cascade' }),
-  
+    
+  accessType: text('access_type').notNull().default('anyone'), // 'anyone' | 'restricted'
+  allowedEmails: jsonb('allowed_emails'), // array of strings
+
   // Hashed token for security - actual token never stored
   tokenHash: text('token_hash').notNull().unique(),
   

@@ -18,14 +18,18 @@ export const getEmergencySosByPatient = async (patientId: string, limit: number 
   return records;
 };
 
-export const getEmergencySosById = async (sosId: string, patientId: string) => {
+export const getEmergencySosById = async (sosId: string, patientId?: string) => {
   const [record] = await db
     .select()
     .from(emergencySos)
     .where(eq(emergencySos.sosId, sosId))
     .limit(1);
 
-  if (!record || record.patientId !== patientId) {
+  if (!record) {
+    throw new AppError(404, 'Emergency SOS record not found');
+  }
+
+  if (patientId && record.patientId !== patientId) {
     throw new AppError(404, 'Emergency SOS record not found');
   }
 
@@ -34,9 +38,12 @@ export const getEmergencySosById = async (sosId: string, patientId: string) => {
 
 export const createEmergencySos = async (sos: {
   patientId: string;
+  affectedPatientId: string;
   latitude?: string;
   longitude?: string;
   criticalInfoShared?: Record<string, any>;
+  serviceType: 'ambulance' | 'police' | 'fire' | 'medical-support' | 'other';
+  description?: string;
   ambulanceCalled?: boolean;
   ambulanceEta?: number;
   contactsNotified?: any[];

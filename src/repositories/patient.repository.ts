@@ -17,12 +17,21 @@ export const getPatientByUserId = async (userId: string) => {
 };
 
 export const getPatientProfile = async (patientId: string) => {
-  const [patient] = await db
+  const result = await db
     .select()
     .from(patients)
+    .innerJoin(users, eq(patients.userId, users.userId))
     .where(eq(patients.patientId, patientId))
     .limit(1);
-  return patient;
+
+  if (!result || result.length === 0) return null;
+
+  const { patients: patientData, users: userData } = result[0];
+  return {
+    ...patientData,
+    age: userData.age,
+    gender: userData.gender,
+  };
 };
 
 export const getUserWithPatient = async (userId: string) => {

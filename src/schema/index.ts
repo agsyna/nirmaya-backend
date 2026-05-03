@@ -29,3 +29,5 @@ export * from './emergencySos';
 
 // Relations
 export * from './relations';
+
+export * from './notifications';

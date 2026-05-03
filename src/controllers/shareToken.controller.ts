@@ -20,6 +20,8 @@ const createShareTokenSchema = z.object({
   accessLevel: z.enum(['public', 'doctor']).default('doctor'),
   maxAccesses: z.number().int().positive().optional(),
   expiresAt: z.string().datetime().optional(),
+  accessType: z.enum(['anyone', 'restricted']).default('anyone').optional(),
+  allowedEmails: z.array(z.string().email()).optional(),
 });
 
 /**
@@ -55,6 +57,8 @@ export const createShareTokenController = asyncHandler(async (request: Request, 
     accessLevel: validated.accessLevel,
     maxAccesses: validated.maxAccesses,
     expiresAt: validated.expiresAt ? new Date(validated.expiresAt) : undefined,
+    accessType: validated.accessType || 'anyone',
+    allowedEmails: validated.allowedEmails,
   });
 
   // Generate QR code

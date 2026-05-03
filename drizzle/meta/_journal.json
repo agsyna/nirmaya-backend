@@ -29,6 +29,13 @@
       "when": 1775670721191,
       "tag": "0003_thin_karma",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777787008357,
+      "tag": "0004_ambiguous_the_leader",
+      "breakpoints": true
     }
   ]
 }

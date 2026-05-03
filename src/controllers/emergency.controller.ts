@@ -9,8 +9,10 @@ import {
 } from '../repositories/emergencySos.repository';
 import {
   getPatientByUserId,
+  getPatientProfile,
   getPatientAllergies,
   getPatientChronicConditions,
+  getPatientHealthData,
 } from '../repositories/patient.repository';
 import { createEmergencySosSchema, updateEmergencySosSchema } from '../validators/patient.validators';
 
@@ -31,34 +33,49 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
     throw new AppError(404, 'Patient profile not found');
   }
 
-  if (!patient.emergencySosEnabled) {
-    throw new AppError(403, 'Emergency SOS is not enabled for this patient');
-  }
-
   const validated = createEmergencySosSchema.parse(request.body);
 
-  // Fetch critical health information
-  const [allergies, chronicConditions] = await Promise.all([
-    getPatientAllergies(patient.patientId),
-    getPatientChronicConditions(patient.patientId),
+  // Get the affected patient profile
+  const affectedPatient = await getPatientProfile(validated.affectedPatientId);
+
+  if (!affectedPatient) {
+    throw new AppError(404, 'Affected patient profile not found');
+  }
+
+  // Fetch critical health information for the affected patient
+  const [allergies, chronicConditions, healthDataRecords] = await Promise.all([
+    getPatientAllergies(affectedPatient.patientId),
+    getPatientChronicConditions(affectedPatient.patientId),
+    getPatientHealthData(affectedPatient.patientId, 1),
   ]);
 
   const criticalInfo = {
-    bloodGroup: patient.bloodGroup,
+    bloodGroup: affectedPatient.bloodGroup,
+    age: affectedPatient.age,
+    gender: affectedPatient.gender,
+    height: affectedPatient.height,
+    weight: affectedPatient.weight,
     allergies: allergies.map((a: any) => ({
       name: a.allergyName,
       severity: a.severity,
+      description: a.description,
     })),
     chronicConditions: chronicConditions.map((cc: any) => ({
       name: cc.conditionName,
       status: cc.status,
+      diagnosisDate: cc.diagnosisDate,
+      notes: cc.notes,
     })),
+    latestHealthData: healthDataRecords[0] || null,
   };
 
   const sos = await createEmergencySos({
     patientId: patient.patientId,
+    affectedPatientId: affectedPatient.patientId,
     latitude: validated.latitude,
     longitude: validated.longitude,
+    serviceType: validated.serviceType,
+    description: validated.description,
     criticalInfoShared: criticalInfo,
     ambulanceCalled: validated.ambulanceCalled,
     contactsNotified: validated.contactsNotified,
@@ -70,12 +87,22 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
     data: {
       sosId: sos.sosId,
       patientId: sos.patientId,
+      affectedPatientId: sos.affectedPatientId,
       status: sos.status,
       latitude: sos.latitude,
       longitude: sos.longitude,
+      serviceType: sos.serviceType,
+      description: sos.description,
       ambulanceCalled: sos.ambulanceCalled,
       voiceMessageSent: sos.voiceMessageSent,
-      criticalInfoShared: sos.criticalInfoShared,
+      affectedPatientProfile: {
+        age: affectedPatient.age,
+        gender: affectedPatient.gender,
+        bloodGroup: affectedPatient.bloodGroup,
+        height: affectedPatient.height,
+        weight: affectedPatient.weight,
+      },
+      criticalInfoShared: criticalInfo,
       createdAt: sos.createdAt,
       message: 'Emergency SOS activated. Emergency contacts are being notified.',
     },
@@ -143,25 +170,42 @@ export const getEmergencySosHistoryController = asyncHandler(async (request: Req
   const sosList = await getEmergencySosByPatient(patient.patientId);
   const paginatedSos = sosList.slice(offset, offset + limit);
 
+  // Fetch affected patient profiles for all records
+  const sosWithProfiles = await Promise.all(
+    paginatedSos.map(async (sos: any) => {
+      const affectedPatient = await getPatientProfile(sos.affectedPatientId);
+      return {
+        sosId: sos.sosId,
+        status: sos.status,
+        serviceType: sos.serviceType,
+        description: sos.description,
+        latitude: sos.latitude,
+        longitude: sos.longitude,
+        ambulanceCalled: sos.ambulanceCalled,
+        ambulanceEta: sos.ambulanceEta,
+        voiceMessageSent: sos.voiceMessageSent,
+        affectedPatientProfile: affectedPatient
+          ? {
+              age: affectedPatient.age,
+              gender: affectedPatient.gender,
+              bloodGroup: affectedPatient.bloodGroup,
+            }
+          : null,
+        createdAt: sos.createdAt,
+        resolvedAt: sos.resolvedAt,
+      };
+    })
+  );
+
   response.status(200).json({
     status: 'success',
-    data: paginatedSos.map((sos: any) => ({
-      sosId: sos.sosId,
-      status: sos.status,
-      latitude: sos.latitude,
-      longitude: sos.longitude,
-      ambulanceCalled: sos.ambulanceCalled,
-      ambulanceEta: sos.ambulanceEta,
-      voiceMessageSent: sos.voiceMessageSent,
-      createdAt: sos.createdAt,
-      resolvedAt: sos.resolvedAt,
-    })),
+    data: sosWithProfiles,
     meta: {
-      count: paginatedSos.length,
+      count: sosWithProfiles.length,
       total: sosList.length,
       limit,
       offset,
-      hasMore: offset + paginatedSos.length < sosList.length,
+      hasMore: offset + sosWithProfiles.length < sosList.length,
     },
   });
 });
@@ -184,7 +228,16 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
     throw new AppError(404, 'Patient profile not found');
   }
 
-  const sos = await getEmergencySosById(sosId, patient.patientId);
+  const sos = await getEmergencySosById(sosId);
+
+  // Fetch affected patient profile and health data
+  const affectedPatient = await getPatientProfile(sos.affectedPatientId);
+
+  if (!affectedPatient) {
+    throw new AppError(404, 'Affected patient profile not found');
+  }
+
+  const healthDataRecords = await getPatientHealthData(affectedPatient.patientId, 1);
 
   response.status(200).json({
     status: 'success',
@@ -193,10 +246,20 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
       status: sos.status,
       latitude: sos.latitude,
       longitude: sos.longitude,
+      serviceType: sos.serviceType,
+      description: sos.description,
       ambulanceCalled: sos.ambulanceCalled,
       ambulanceEta: sos.ambulanceEta,
       contactsNotified: sos.contactsNotified,
       voiceMessageSent: sos.voiceMessageSent,
+      affectedPatientProfile: {
+        age: affectedPatient.age,
+        gender: affectedPatient.gender,
+        bloodGroup: affectedPatient.bloodGroup,
+        height: affectedPatient.height,
+        weight: affectedPatient.weight,
+      },
+      latestHealthData: healthDataRecords[0] || null,
       criticalInfoShared: sos.criticalInfoShared,
       createdAt: sos.createdAt,
       resolvedAt: sos.resolvedAt,

@@ -79,6 +79,14 @@ export const auditLogStatusEnum = pgEnum('audit_log_status', ['success', 'failed
 
 export const emergencySosStatusEnum = pgEnum('emergency_sos_status', ['active', 'resolved', 'cancelled']);
 
+export const emergencyServiceTypeEnum = pgEnum('emergency_service_type', [
+  'ambulance',
+  'police',
+  'fire',
+  'medical-support',
+  'other',
+]);
+
 export const emergencyContactRelationshipEnum = pgEnum('emergency_contact_relationship', [
   'spouse',
   'parent',
