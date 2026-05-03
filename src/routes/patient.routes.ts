@@ -10,6 +10,13 @@ import {
   createUserHealthRecordController,
 } from '../controllers/patient.controller';
 
+// Nominees controllers
+import {
+  getNomineesController,
+  createNomineeController,
+  updateNomineeController,
+} from '../controllers/nominees.controller';
+
 // Medical records controllers
 import {
   getReportsController,
@@ -57,6 +64,8 @@ import {
   createEmergencySosSchema,
   createUploadUrlSchema,
   finalizeUploadSchema,
+  createNomineeSchema,
+  updateNomineeSchema,
 } from '../validators/patient.validators';
 
 export const patientRouter = Router();
@@ -87,6 +96,108 @@ patientRouter.use(authenticate);
  */
 patientRouter.get('/me', getCurrentUserController);
 patientRouter.get('/health', getUserHealthController);
+
+// ============
+// NOMINEES
+// ============
+
+/**
+ * @swagger
+ * /api/v1/patient/nominees:
+ *   get:
+ *     summary: Get all nominees
+ *     description: Returns all nominees associated with the authenticated patient
+ *     tags:
+ *       - Nominees
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Nominees retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Patient profile not found
+ *   post:
+ *     summary: Add a new nominee
+ *     description: Create a new nominee linked to the authenticated patient
+ *     tags:
+ *       - Nominees
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Ravi Sharma
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: ravi@example.com
+ *     responses:
+ *       201:
+ *         description: Nominee created successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+patientRouter.get('/nominees', getNomineesController);
+patientRouter.post('/nominees', validateBody(createNomineeSchema), createNomineeController);
+
+/**
+ * @swagger
+ * /api/v1/patient/nominees/{id}:
+ *   put:
+ *     summary: Update a nominee
+ *     description: Update name and/or email of an existing nominee. At least one field must be provided.
+ *     tags:
+ *       - Nominees
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Nominee ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Ravi Sharma Updated
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: ravi.updated@example.com
+ *     responses:
+ *       200:
+ *         description: Nominee updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — nominee belongs to another patient
+ *       404:
+ *         description: Nominee not found
+ */
+patientRouter.put('/nominees/:id', validateBody(updateNomineeSchema), updateNomineeController);
 
 /**
  * @swagger

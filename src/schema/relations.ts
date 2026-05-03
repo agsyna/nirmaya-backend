@@ -14,6 +14,7 @@ import { auditLogs } from './auditLogs';
 import { emergencyContacts } from './emergencyContacts';
 import { emergencySos } from './emergencySos';
 import { accessRequests } from './accessRequests';
+import { nominees } from './nominees';
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   admin: one(admins, { fields: [users.userId], references: [admins.userId] }),
@@ -45,6 +46,11 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   emergencyContacts: many(emergencyContacts),
   emergencySos: many(emergencySos),
   accessRequests: many(accessRequests),
+  nominees: many(nominees),
+}));
+
+export const nomineesRelations = relations(nominees, ({ one }) => ({
+  patient: one(patients, { fields: [nominees.patientId], references: [patients.patientId] }),
 }));
 
 export const allergiesRelations = relations(allergies, ({ one }) => ({

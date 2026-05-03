@@ -16,6 +16,7 @@ export * from './medicalRecords';
 
 // Patient Management
 export * from './reminders';
+export * from './nominees';
 
 // Access Control & Sharing
 export * from './shareTokens';

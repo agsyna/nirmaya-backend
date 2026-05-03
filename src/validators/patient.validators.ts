@@ -65,3 +65,18 @@ export const finalizeUploadSchema = z.object({
 export const auditLogQuerySchema = z.object({
   id: z.string().uuid().optional(),
 });
+
+// Nominee validators
+export const createNomineeSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255),
+  email: z.string().email('Invalid email address'),
+});
+
+export const updateNomineeSchema = z
+  .object({
+    name: z.string().min(1).max(255).optional(),
+    email: z.string().email('Invalid email address').optional(),
+  })
+  .refine((data) => data.name !== undefined || data.email !== undefined, {
+    message: 'At least one of name or email must be provided',
+  });
