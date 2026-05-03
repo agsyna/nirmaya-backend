@@ -18,7 +18,7 @@ import {
   updateAccessRequestSchema,
 } from '../validators/accessRequests';
 import { db } from '../db';
-import { users, patients } from '../schema';
+import { users, patients, shareTokens } from '../schema';
 import { eq } from 'drizzle-orm';
 
 // Doctor requests access
@@ -87,6 +87,24 @@ export const getDoctorAccessRequestsController = asyncHandler(async (request: Re
     }
   }
 
+  // Map tokens
+  const shareTokenIds = requests.map(r => r.shareTokenId).filter(Boolean) as string[];
+  const tokensMap: Record<string, string> = {};
+  
+  if (shareTokenIds.length > 0) {
+    for (const stId of shareTokenIds) {
+      const [st] = await db
+        .select({ metadata: shareTokens.metadata })
+        .from(shareTokens)
+        .where(eq(shareTokens.tokenId, stId))
+        .limit(1);
+      
+      if (st?.metadata && typeof st.metadata === 'object' && 'token' in st.metadata) {
+        tokensMap[stId] = (st.metadata as any).token as string;
+      }
+    }
+  }
+
   response.status(200).json({
     status: 'success',
     data: requests.map(r => ({
@@ -96,6 +114,7 @@ export const getDoctorAccessRequestsController = asyncHandler(async (request: Re
       createdAt: r.createdAt,
       expiresAt: r.expiresAt,
       approvedScope: r.approvedScope,
+      token: r.shareTokenId ? (tokensMap[r.shareTokenId] || null) : null,
     })),
   });
 });

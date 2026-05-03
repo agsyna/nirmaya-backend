@@ -1078,7 +1078,8 @@ Fetch history of all access requests made by this doctor.
       "status": "approved",
       "createdAt": "2026-05-03T11:00:00Z",
       "expiresAt": "2026-05-03T12:00:00Z",
-      "approvedScope": ["reports"]
+      "approvedScope": ["reports"],
+      "token": "share_token_here"
     }
   ]
 }

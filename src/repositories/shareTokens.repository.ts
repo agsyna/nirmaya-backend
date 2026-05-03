@@ -53,6 +53,7 @@ export const createShareToken = async (data: {
       maxAccesses: data.maxAccesses ?? -1,
       expiresAt: data.expiresAt,
       status: 'active',
+      metadata: data.accessLevel === 'doctor' ? { token } : null,
     })
     .returning();
 
