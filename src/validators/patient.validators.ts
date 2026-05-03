@@ -33,11 +33,8 @@ export const createEmergencySosSchema = z.object({
   affectedPatientId: z.string().uuid(),
   latitude: z.string().optional(),
   longitude: z.string().optional(),
-  serviceType: z.enum(['ambulance', 'police', 'fire', 'medical-support', 'other']),
+  serviceTypes: z.array(z.enum(['ambulance', 'police', 'fire', 'medical-support', 'other'])).min(1),
   description: z.string().max(500).optional(),
-  ambulanceCalled: z.boolean().default(false),
-  voiceMessageSent: z.boolean().default(false),
-  contactsNotified: z.array(z.string().uuid()).default([]),
 });
 
 export const updateEmergencySosSchema = z.object({

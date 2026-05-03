@@ -481,14 +481,11 @@ Trigger a physical emergency broadcasting system alert directly referencing the 
   "affectedPatientId": "uuid-of-affected-person",
   "latitude": "40.7128",
   "longitude": "-74.0060",
-  "serviceType": "ambulance",
-  "description": "Car accident on Main Street, person unconscious",
-  "ambulanceCalled": true,
-  "voiceMessageSent": false,
-  "contactsNotified": ["<uuid-of-contact-1>", "<uuid-of-contact-2>"]
+  "serviceTypes": ["ambulance", "medical-support"],
+  "description": "Car accident on Main Street, person unconscious"
 }
 ```
-*Notes: `affectedPatientId` and `serviceType` are required. Valid `serviceType` values: "ambulance", "police", "fire", "medical-support", "other". All other fields are optional.*
+*Notes: `affectedPatientId` and `serviceTypes` are required. `serviceTypes` is an array of service types needed. Valid values: "ambulance", "police", "fire", "medical-support", "other". `latitude`, `longitude`, and `description` are optional.*
 
 
 **Response Object**:

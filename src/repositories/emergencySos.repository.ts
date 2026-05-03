@@ -42,12 +42,8 @@ export const createEmergencySos = async (sos: {
   latitude?: string;
   longitude?: string;
   criticalInfoShared?: Record<string, any>;
-  serviceType: 'ambulance' | 'police' | 'fire' | 'medical-support' | 'other';
+  serviceTypes: ('ambulance' | 'police' | 'fire' | 'medical-support' | 'other')[];
   description?: string;
-  ambulanceCalled?: boolean;
-  ambulanceEta?: number;
-  contactsNotified?: any[];
-  voiceMessageSent?: boolean;
 }) => {
   const [result] = await db
     .insert(emergencySos)
@@ -60,10 +56,6 @@ export const updateEmergencySos = async (
   sosId: string,
   patientId: string,
   updates: {
-    ambulanceCalled?: boolean;
-    ambulanceEta?: number;
-    contactsNotified?: any[];
-    voiceMessageSent?: boolean;
     status?: 'active' | 'resolved' | 'cancelled';
     resolvedAt?: Date;
   }

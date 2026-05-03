@@ -74,12 +74,9 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
     affectedPatientId: affectedPatient.patientId,
     latitude: validated.latitude,
     longitude: validated.longitude,
-    serviceType: validated.serviceType,
+    serviceTypes: validated.serviceTypes,
     description: validated.description,
     criticalInfoShared: criticalInfo,
-    ambulanceCalled: validated.ambulanceCalled,
-    contactsNotified: validated.contactsNotified,
-    voiceMessageSent: validated.voiceMessageSent,
   });
 
   response.status(201).json({
@@ -91,10 +88,8 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
       status: sos.status,
       latitude: sos.latitude,
       longitude: sos.longitude,
-      serviceType: sos.serviceType,
+      serviceTypes: sos.serviceTypes,
       description: sos.description,
-      ambulanceCalled: sos.ambulanceCalled,
-      voiceMessageSent: sos.voiceMessageSent,
       affectedPatientProfile: {
         age: affectedPatient.age,
         gender: affectedPatient.gender,
@@ -104,7 +99,7 @@ export const activateEmergencySosController = asyncHandler(async (request: Reque
       },
       criticalInfoShared: criticalInfo,
       createdAt: sos.createdAt,
-      message: 'Emergency SOS activated. Emergency contacts are being notified.',
+      message: 'Emergency SOS activated.',
     },
   });
 });
@@ -139,9 +134,6 @@ export const updateEmergencySosController = asyncHandler(async (request: Request
     data: {
       sosId: sos.sosId,
       status: sos.status,
-      ambulanceCalled: sos.ambulanceCalled,
-      ambulanceEta: sos.ambulanceEta,
-      voiceMessageSent: sos.voiceMessageSent,
       resolvedAt: sos.resolvedAt,
       updatedAt: new Date(),
     },
@@ -177,13 +169,10 @@ export const getEmergencySosHistoryController = asyncHandler(async (request: Req
       return {
         sosId: sos.sosId,
         status: sos.status,
-        serviceType: sos.serviceType,
+        serviceTypes: sos.serviceTypes,
         description: sos.description,
         latitude: sos.latitude,
         longitude: sos.longitude,
-        ambulanceCalled: sos.ambulanceCalled,
-        ambulanceEta: sos.ambulanceEta,
-        voiceMessageSent: sos.voiceMessageSent,
         affectedPatientProfile: affectedPatient
           ? {
               age: affectedPatient.age,
@@ -246,12 +235,8 @@ export const getEmergencySosDetailController = asyncHandler(async (request: Requ
       status: sos.status,
       latitude: sos.latitude,
       longitude: sos.longitude,
-      serviceType: sos.serviceType,
+      serviceTypes: sos.serviceTypes,
       description: sos.description,
-      ambulanceCalled: sos.ambulanceCalled,
-      ambulanceEta: sos.ambulanceEta,
-      contactsNotified: sos.contactsNotified,
-      voiceMessageSent: sos.voiceMessageSent,
       affectedPatientProfile: {
         age: affectedPatient.age,
         gender: affectedPatient.gender,

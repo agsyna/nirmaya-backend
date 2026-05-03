@@ -1,6 +1,6 @@
-import { pgTable, uuid, timestamp, boolean, numeric, integer, jsonb, text } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, timestamp, jsonb, text,numeric } from 'drizzle-orm/pg-core';
 import { patients } from './patients';
-import { emergencySosStatusEnum, emergencyServiceTypeEnum } from './enums';
+import { emergencySosStatusEnum } from './enums';
 
 export const emergencySos = pgTable('emergency_sos', {
   sosId: uuid('sos_id').primaryKey().defaultRandom(),
@@ -13,12 +13,8 @@ export const emergencySos = pgTable('emergency_sos', {
   latitude: numeric('latitude', { precision: 10, scale: 8 }),
   longitude: numeric('longitude', { precision: 11, scale: 8 }),
   criticalInfoShared: jsonb('critical_info_shared'), // Blood group, allergies, conditions
-  serviceType: emergencyServiceTypeEnum('service_type').notNull(),
+  serviceTypes: jsonb('service_types').notNull(), // Array of service types needed
   description: text('description'),
-  ambulanceCalled: boolean('ambulance_called').default(false),
-  ambulanceEta: integer('ambulance_eta'), // in minutes
-  contactsNotified: jsonb('contacts_notified'), // Array of contact IDs notified
-  voiceMessageSent: boolean('voice_message_sent').default(false),
   status: emergencySosStatusEnum('status').default('active'),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

@@ -36,6 +36,20 @@
       "when": 1777787008357,
       "tag": "0004_ambiguous_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777792126587,
+      "tag": "0005_skinny_gambit",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777792980011,
+      "tag": "0006_woozy_franklin_richards",
+      "breakpoints": true
     }
   ]
 }
