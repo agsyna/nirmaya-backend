@@ -7,7 +7,7 @@ import {
   getShareTokensByPatient,
   getPatientDoctorToken,
 } from '../repositories/shareTokens.repository';
-import { getPatientByUserId, getPatientHealthData, getPatientAllergies, getPatientChronicConditions, getPatientVaccinations } from '../repositories/patient.repository';
+import { getPatientByUserId, getPatientProfile, getPatientHealthData, getPatientAllergies, getPatientChronicConditions, getPatientVaccinations } from '../repositories/patient.repository';
 import { getMedicalRecordsByPatientAndType } from '../repositories/medicalRecords.repository';
 import { generateQRCode } from '../lib/qrcode';
 import { env } from '../config/env';
@@ -184,6 +184,17 @@ export const accessSharedDataController = asyncHandler(async (request: Request, 
 
   // Fetch health data if in scope
   if (scope.includes('health_data')) {
+    const patientProfile = await getPatientProfile(patientId);
+    if (patientProfile) {
+      dataResponse.patientProfile = {
+        age: patientProfile.age,
+        gender: patientProfile.gender,
+        bloodGroup: patientProfile.bloodGroup,
+        height: patientProfile.height,
+        weight: patientProfile.weight,
+      };
+    }
+
     const healthData = await getPatientHealthData(patientId, 100);
     dataResponse.healthData = healthData.map((hd: HealthData) => ({
       heartRate: hd.heartRate,
