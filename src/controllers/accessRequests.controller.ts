@@ -159,10 +159,13 @@ export const approveAccessRequestController = asyncHandler(async (request: Reque
     expiresAt.setMinutes(expiresAt.getMinutes() + validated.expiresInMinutes);
   }
 
+  const doctorData = await getDoctorWithUser(accessReq.doctorId);
+  if (!doctorData) throw new AppError(404, 'Doctor not found');
+
   // Create share token programmatically
   const shareToken = await createShareToken({
     patientId: patient.patientId,
-    doctorId: accessReq.doctorId,
+    doctorId: doctorData.user.userId,
     scope: validated.scope,
     accessLevel: 'doctor',
     accessType: 'restricted',
@@ -228,9 +231,12 @@ export const updateAccessRequestController = asyncHandler(async (request: Reques
     await revokeShareToken(accessReq.shareTokenId, patient.patientId, userId);
   }
 
+  const doctorData = await getDoctorWithUser(accessReq.doctorId);
+  if (!doctorData) throw new AppError(404, 'Doctor not found');
+
   const shareToken = await createShareToken({
     patientId: patient.patientId,
-    doctorId: accessReq.doctorId,
+    doctorId: doctorData.user.userId,
     scope: validated.scope,
     accessLevel: 'doctor',
     accessType: 'restricted',
